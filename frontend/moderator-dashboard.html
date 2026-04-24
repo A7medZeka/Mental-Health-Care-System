@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Moderator Dashboard - Mental Health Care</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+
+    <div class="container-fluid">
+        <div class="row">
+            
+            <!-- Sidebar -->
+            <nav class="col-md-3 col-lg-2 d-md-block sidebar collapse bg-white shadow-sm">
+                <div class="position-sticky pt-4">
+                    <div class="text-center mb-4">
+                        <i class="bi bi-heart-pulse-fill text-primary-custom" style="font-size: 2rem;"></i>
+                        <h5 class="fw-bold text-primary-custom mt-2">Moderator Portal</h5>
+                    </div>
+                    
+                    <ul class="nav flex-column mb-auto">
+                        <li class="nav-item">
+                            <a class="nav-link active" href="moderator-dashboard.html">
+                                <i class="bi bi-shield-shaded me-2"></i> Dashboard & Alerts
+                            </a>
+                        </li>
+                    </ul>
+                    
+                    <hr class="mx-3 mt-5">
+                    <div class="px-3">
+                        <a href="index.html" class="btn btn-outline-danger w-100 mt-3 d-flex align-items-center justify-content-center">
+                            <i class="bi bi-box-arrow-right me-2"></i> Logout
+                        </a>
+                    </div>
+                </div>
+            </nav>
+
+            <!-- Main Content -->
+            <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4 py-4 fade-in">
+                
+                <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-4 border-bottom">
+                    <h1 class="h2 text-primary-custom fw-bold">Moderator Dashboard</h1>
+                </div>
+
+                <!-- Crisis Alerts (UC-29) -->
+                <div class="alert alert-danger d-flex align-items-center mb-4 border-0 shadow-sm" role="alert">
+                    <i class="bi bi-exclamation-octagon-fill flex-shrink-0 fs-3 me-3"></i>
+                    <div>
+                        <h5 class="alert-heading fw-bold mb-1">High-Risk Keyword Detected (Urgent)</h5>
+                        <p class="mb-0">An anonymous post (User: Anon_882) contained terms matching the self-harm crisis model. Please review immediately and trigger local emergency resources if necessary.</p>
+                    </div>
+                    <div class="ms-auto d-flex flex-column gap-2">
+                        <button class="btn btn-danger btn-sm fw-bold shadow-sm" onclick="showToast('Alert escalated to Admin and local resources triggered.', 'success'); this.parentElement.parentElement.remove();">Escalate to Admin</button>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <!-- Moderation Queue (UC-31) -->
+                    <div class="col-12 mb-4">
+                        <div class="card card-custom h-100">
+                            <div class="card-header bg-white border-0 pt-4 pb-0 d-flex justify-content-between align-items-center">
+                                <h5 class="fw-bold text-primary-custom"><i class="bi bi-chat-square-text me-2"></i>Forum Moderation Queue</h5>
+                                <span class="badge bg-danger">2 Pending Reviews</span>
+                            </div>
+                            <div class="card-body">
+                                <p class="text-secondary-custom">Review flagged posts submitted by the community or automated filters.</p>
+                                
+                                <div class="table-responsive">
+                                    <table class="table table-hover table-custom mb-0 align-middle">
+                                        <thead>
+                                            <tr>
+                                                <th class="px-4 py-3">Pseudonym</th>
+                                                <th class="px-4 py-3">Post Snippet</th>
+                                                <th class="px-4 py-3">Flag Reason</th>
+                                                <th class="px-4 py-3">Status</th>
+                                                <th class="px-4 py-3">Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <!-- Main Scenario: Action on Flagged Post -->
+                                            <tr>
+                                                <td class="px-4 py-3 fw-semibold">Anon_102</td>
+                                                <td class="px-4 py-3 fst-italic">"Anyone know a good place to buy..."</td>
+                                                <td class="px-4 py-3"><span class="badge bg-warning text-dark"><i class="bi bi-flag-fill me-1"></i>Spam / Solitication</span></td>
+                                                <td class="px-4 py-3"><span class="badge bg-danger">Flagged</span></td>
+                                                <td class="px-4 py-3">
+                                                    <div class="btn-group shadow-sm">
+                                                        <button class="btn btn-sm btn-outline-success mod-action-btn" data-action="keep" onclick="this.closest('tr').remove(); showToast('Post approved and kept.', 'success');"><i class="bi bi-check-lg"></i> Keep</button>
+                                                        <button class="btn btn-sm btn-outline-secondary mod-action-btn" data-action="hide"><i class="bi bi-eye-slash"></i> Hide</button>
+                                                        <button class="btn btn-sm btn-outline-danger mod-action-btn" data-action="delete"><i class="bi bi-trash"></i> Delete</button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                            <!-- Alternative Scenario: Mark for Review -->
+                                            <tr>
+                                                <td class="px-4 py-3 fw-semibold">Anon_882</td>
+                                                <td class="px-4 py-3 fst-italic">"I can't do this anymore, it's too much..."</td>
+                                                <td class="px-4 py-3"><span class="badge bg-danger"><i class="bi bi-exclamation-triangle-fill me-1"></i>Distress / Self-Harm</span></td>
+                                                <td class="px-4 py-3"><span class="badge bg-danger">Flagged</span></td>
+                                                <td class="px-4 py-3">
+                                                    <div class="btn-group shadow-sm">
+                                                        <button class="btn btn-sm btn-outline-warning text-dark mod-action-btn" data-action="review"><i class="bi bi-search"></i> Needs Review</button>
+                                                        <button class="btn btn-sm btn-outline-danger mod-action-btn" data-action="delete"><i class="bi bi-trash"></i> Delete</button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </main>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div aria-live="polite" aria-atomic="true" class="position-relative">
+        <div id="toastContainer" class="toast-container position-fixed top-0 end-0 p-3"></div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Custom JS -->
+    <script src="assets/js/main.js"></script>
+    <script src="assets/js/roles.js"></script>
+</body>
+</html>
