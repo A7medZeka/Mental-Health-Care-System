@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Sessions - Therapist Portal</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+
+    <div class="container-fluid">
+        <div class="row">
+            
+            <!-- Sidebar -->
+            <nav class="col-md-3 col-lg-2 d-md-block sidebar collapse bg-white shadow-sm">
+                <div class="position-sticky pt-4">
+                    <div class="text-center mb-4">
+                        <i class="bi bi-heart-pulse-fill text-primary-custom" style="font-size: 2rem;"></i>
+                        <h5 class="fw-bold text-primary-custom mt-2">Therapist Portal</h5>
+                    </div>
+                    
+                    <ul class="nav flex-column mb-auto">
+                        <li class="nav-item">
+                            <a class="nav-link" href="therapist-dashboard.html">
+                                <i class="bi bi-house-door me-2"></i> Home
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link active" href="therapist-sessions.html">
+                                <i class="bi bi-calendar-event me-2"></i> Manage Sessions
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </nav>
+
+            <!-- Main Content -->
+            <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4 py-4 fade-in">
+                
+                <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-4 border-bottom">
+                    <h1 class="h2 text-primary-custom fw-bold">Session Management</h1>
+                </div>
+
+                <div class="row">
+                    <!-- Virtual Waiting Room (UC-15) -->
+                    <div class="col-12 mb-4">
+                        <div class="card card-custom">
+                            <div class="card-header bg-white border-0 pt-4 pb-0">
+                                <h5 class="fw-bold text-primary-custom"><i class="bi bi-door-open me-2"></i>Virtual Waiting Room</h5>
+                            </div>
+                            <div class="card-body">
+                                <p class="text-secondary-custom">Patients currently waiting for their scheduled tele-health sessions.</p>
+                                <div class="table-responsive">
+                                    <table class="table table-hover table-custom mb-0">
+                                        <thead>
+                                            <tr>
+                                                <th class="px-4 py-3">Patient Name</th>
+                                                <th class="px-4 py-3">Scheduled Time</th>
+                                                <th class="px-4 py-3">Wait Time</th>
+                                                <th class="px-4 py-3">Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td class="px-4 py-3 fw-semibold">Alex M.</td>
+                                                <td class="px-4 py-3">10:00 AM</td>
+                                                <td class="px-4 py-3 text-warning fw-bold">5 mins</td>
+                                                <td class="px-4 py-3">
+                                                    <button class="btn btn-sm btn-primary-custom admit-btn" data-name="Alex M."><i class="bi bi-camera-video-fill me-2"></i>Admit to Session</button>
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Clinical Notes Versioning (UC-16) -->
+                    <div class="col-lg-6 mb-4">
+                        <div class="card card-custom h-100">
+                            <div class="card-header bg-white border-0 pt-4 pb-0">
+                                <h5 class="fw-bold text-primary-custom"><i class="bi bi-journal-medical me-2"></i>Clinical Notes (Patient: PT-98234)</h5>
+                            </div>
+                            <div class="card-body">
+                                <p class="text-secondary-custom small">Notes are saved as immutable versions for compliance.</p>
+                                <textarea class="form-control mb-3" rows="5" placeholder="Enter session notes here..."></textarea>
+                                <button class="btn btn-primary-custom w-100 mb-4" id="saveNoteBtn">Save New Version</button>
+                                
+                                <h6 class="fw-bold text-primary-custom mb-3">Version History</h6>
+                                <ul class="list-group list-group-flush">
+                                    <li class="list-group-item px-0">
+                                        <div class="d-flex justify-content-between align-items-center mb-1">
+                                            <strong>v2.0</strong>
+                                            <span class="badge bg-secondary">Oct 17, 2026 - 11:45 AM</span>
+                                        </div>
+                                        <p class="mb-2 text-muted small">Updated treatment plan to include daily mindfulness.</p>
+                                        <button class="btn btn-sm btn-outline-danger edit-past-note-btn"><i class="bi bi-pencil me-1"></i>Edit (Simulate Error)</button>
+                                    </li>
+                                    <li class="list-group-item px-0">
+                                        <div class="d-flex justify-content-between align-items-center mb-1">
+                                            <strong>v1.0</strong>
+                                            <span class="badge bg-secondary">Oct 10, 2026 - 11:30 AM</span>
+                                        </div>
+                                        <p class="mb-0 text-muted small">Initial intake notes and baseline assessment.</p>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Access to Sensitive Content (UC-20) -->
+                    <div class="col-lg-6 mb-4">
+                        <div class="card card-custom h-100">
+                            <div class="card-header bg-white border-0 pt-4 pb-0">
+                                <h5 class="fw-bold text-primary-custom"><i class="bi bi-shield-lock me-2"></i>Resource Permissions (PT-98234)</h5>
+                            </div>
+                            <div class="card-body">
+                                <p class="text-secondary-custom mb-4">Control which sensitive wellness resources this patient can access.</p>
+                                
+                                <div class="d-flex justify-content-between align-items-center border-bottom pb-3 mb-3">
+                                    <div>
+                                        <h6 class="mb-1 fw-bold">Trauma Recovery Guide (Level 2)</h6>
+                                        <small class="text-muted">Requires therapist authorization to view.</small>
+                                    </div>
+                                    <div class="form-check form-switch fs-4">
+                                        <input class="form-check-input toggle-content-btn" type="checkbox" role="switch" checked>
+                                    </div>
+                                </div>
+
+                                <div class="d-flex justify-content-between align-items-center border-bottom pb-3 mb-3">
+                                    <div>
+                                        <h6 class="mb-1 fw-bold">Advanced CBT Worksheets</h6>
+                                        <small class="text-muted">Standard material, often unlocked after Session 3.</small>
+                                    </div>
+                                    <div class="form-check form-switch fs-4">
+                                        <input class="form-check-input toggle-content-btn" type="checkbox" role="switch">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+            </main>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div aria-live="polite" aria-atomic="true" class="position-relative">
+        <div id="toastContainer" class="toast-container position-fixed top-0 end-0 p-3"></div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Custom JS -->
+    <script src="assets/js/main.js"></script>
+    <script src="assets/js/roles.js"></script>
+</body>
+</html>
