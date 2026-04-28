@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Sessions - Therapist Portal</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+
+    <div class="container-fluid">
+        <div class="row">
+            
+            <!-- Sidebar -->
+            <nav class="col-md-3 col-lg-2 d-md-block sidebar collapse bg-white shadow-sm">
+                <div class="position-sticky pt-4">
+                    <div class="text-center mb-4">
+                        <i class="bi bi-heart-pulse-fill text-primary-custom" style="font-size: 2rem;"></i>
+                        <h5 class="fw-bold text-primary-custom mt-2">MentalCare System</h5>
+                    </div>
+                    
+                    <ul class="nav flex-column mb-auto">
+                        <li class="nav-item">
+                            <a class="nav-link" href="therapist-dashboard.html">
+                                <i class="bi bi-house-door me-2"></i> Dashboard
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link active" href="therapist-sessions.html">
+                                <i class="bi bi-calendar-event me-2"></i> Manage Sessions
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="therapist-patients.html">
+                                <i class="bi bi-people me-2"></i> Manage Patients
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="therapist-insights.html">
+                                <i class="bi bi-graph-up me-2"></i> Clinical Insights
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </nav>
+
+            <!-- Main Content -->
+            <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4 py-4 fade-in">
+                
+                <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-4 border-bottom">
+                    <h1 class="h2 text-primary-custom fw-bold">Session Interface</h1>
+                    <div class="d-flex align-items-center">
+                        <span class="text-secondary-custom me-3 fw-bold"><i class="bi bi-person-circle me-1"></i> Therapist: Dr. Harding</span>
+                        <div class="spinner-grow text-danger spinner-grow-sm d-none" role="status" id="liveIndicator">
+                            <span class="visually-hidden">Live Session Active</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <!-- Session Check-In & Virtual Waiting Room (UC-13 & UC-15) -->
+                    <div class="col-lg-6 mb-4">
+                        <div class="card card-custom h-100" id="sessionManagerUI">
+                            <div class="card-header bg-white border-0 pt-4 pb-0 d-flex justify-content-between align-items-center">
+                                <h5 class="fw-bold text-primary-custom"><i class="bi bi-camera-video me-2"></i>Live Session Controller</h5>
+                                <span class="badge bg-secondary" id="sessionStatusBadge">Waiting</span>
+                            </div>
+                            <div class="card-body">
+                                
+                                <!-- Waiting Room UI -->
+                                <div id="waitingRoomSection">
+                                    <h6 class="text-secondary-custom fw-bold mb-3 border-bottom pb-2">Virtual Waiting Room</h6>
+                                    
+                                    <!-- Simulated Patient Notification -->
+                                    <div class="alert alert-info py-2 mb-3" id="patientArrivedAlert" style="display:none;">
+                                        <i class="bi bi-info-circle-fill me-2"></i><strong>notifyPatientArrived():</strong> Jane Doe just checked in.
+                                    </div>
+
+                                    <ul class="list-group list-group-flush mb-4" id="waitingPatientsList">
+                                        <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                                            <div>
+                                                <strong>Jane Doe</strong> <span class="badge bg-warning text-dark ms-2">InWaitingRoom</span>
+                                                <div class="small text-muted">Joined 2 mins ago</div>
+                                            </div>
+                                            <button class="btn btn-primary-custom btn-sm" id="btnAdmitSession">Admit to Session</button>
+                                        </li>
+                                    </ul>
+                                </div>
+
+                                <!-- Live Session UI (Hidden initially) -->
+                                <div id="liveSessionSection" style="display:none;" class="text-center py-4">
+                                    <div class="bg-dark rounded-3 d-flex align-items-center justify-content-center mb-3 position-relative" style="height: 200px;">
+                                        <i class="bi bi-person-bounding-box text-secondary" style="font-size: 5rem;"></i>
+                                        <div class="position-absolute bottom-0 start-0 p-2 text-white small">Jane Doe</div>
+                                        <div class="position-absolute bottom-0 end-0 p-2 text-white small" id="liveTimer">00:00</div>
+                                    </div>
+                                    <div class="d-flex justify-content-center gap-3">
+                                        <button class="btn btn-danger" id="btnEndSession"><i class="bi bi-telephone-x-fill me-2"></i>End Session</button>
+                                        <button class="btn btn-secondary" disabled id="btnFinalizeSession">Finalize (Billing)</button>
+                                    </div>
+                                </div>
+
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Clinical Notes Versioning (UC-16) -->
+                    <div class="col-lg-6 mb-4">
+                        <div class="card card-custom h-100" id="notesUI">
+                            <div class="card-header bg-white border-0 pt-4 pb-0 d-flex justify-content-between align-items-center">
+                                <h5 class="fw-bold text-primary-custom"><i class="bi bi-journal-medical me-2"></i>Clinical Notes Repository</h5>
+                                <span class="badge bg-light text-dark border">Patient: Jane Doe</span>
+                            </div>
+                            <div class="card-body">
+                                
+                                <div class="mb-3">
+                                    <label class="form-label fw-semibold text-secondary-custom">New Note Entry (Draft)</label>
+                                    <textarea class="form-control" id="noteContent" rows="4" placeholder="Type session observations here..."></textarea>
+                                </div>
+                                <button class="btn btn-primary-custom w-100 mb-4" id="btnSaveNote">Save New Version</button>
+                                
+                                <h6 class="fw-bold text-secondary-custom border-bottom pb-2 mb-3">Version History</h6>
+                                <div id="noteHistoryContainer" style="max-height: 250px; overflow-y: auto;">
+                                    
+                                    <!-- Rendered Note History -->
+                                    <div class="p-3 mb-2 bg-light rounded border border-start-4 border-start-primary" id="version_1">
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <strong class="text-primary-custom">v1.0</strong>
+                                            <span class="small text-muted font-monospace">2026-04-20 11:30 AM</span>
+                                        </div>
+                                        <p class="mb-2 text-dark small">Patient discussed ongoing anxiety related to work stress. Recommended grounding exercises.</p>
+                                        <div class="text-end">
+                                            <button class="btn btn-sm btn-outline-danger btn-delete-history" data-version="v1.0">
+                                                <i class="bi bi-trash"></i> Delete
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+            </main>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div aria-live="polite" aria-atomic="true" class="position-relative">
+        <div id="toastContainer" class="toast-container position-fixed top-0 end-0 p-3"></div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Custom JS -->
+    <script src="assets/js/main.js"></script>
+    <script src="assets/js/therapist.js"></script>
+</body>
+</html>
