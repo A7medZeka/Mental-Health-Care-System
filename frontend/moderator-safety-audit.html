@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Safety Audit Log - Moderator - MentalCare System</title>
+    <meta name="description" content="Immutable safety and high-risk event audit log for moderators. UC-35.">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/style.css">
+    <style>
+        /* ── WORM badge ── */
+        .worm-badge {
+            background: linear-gradient(135deg,#2F8F7E,#48B6A2);
+            color: white; border-radius: 30px;
+            padding: .4rem 1.2rem; font-size: .83rem; font-weight: 700;
+            display: inline-flex; align-items: center; gap: .4rem;
+        }
+
+        /* ── Severity pills ── */
+        .sev-critical { background:#fff0f0; color:#dc3545; border:1.5px solid #f5c6cb; }
+        .sev-high     { background:#fff8e1; color:#e67e22; border:1.5px solid #ffe0a0; }
+        .sev-medium   { background:#fffbea; color:#d4ac0d; border:1.5px solid #ffe58f; }
+        .sev-low      { background:#e6f5f2; color:#2F8F7E; border:1.5px solid #aad9d0; }
+        .sev-badge {
+            display:inline-flex; align-items:center; gap:.3rem;
+            font-size:.76rem; font-weight:700; border-radius:20px; padding:.25rem .75rem;
+        }
+
+        /* ── Log entry card ── */
+        .audit-entry {
+            background:#fff; border-radius:14px;
+            box-shadow:0 2px 16px rgba(47,143,126,0.07);
+            margin-bottom:1rem; overflow:hidden;
+            border-left:5px solid transparent;
+            transition:box-shadow .2s;
+        }
+        .audit-entry:hover { box-shadow:0 5px 24px rgba(47,143,126,0.13); }
+        .audit-entry.border-critical { border-color:#dc3545; }
+        .audit-entry.border-high     { border-color:#fd7e14; }
+        .audit-entry.border-medium   { border-color:#ffc107; }
+        .audit-entry.border-low      { border-color:#2F8F7E; }
+
+        /* ── Timeline inside entry ── */
+        .audit-timeline { display:flex; flex-direction:column; gap:.5rem; }
+        .tl-item { display:flex; gap:.75rem; align-items:flex-start; font-size:.84rem; }
+        .tl-dot {
+            width:10px; height:10px; border-radius:50%; flex-shrink:0; margin-top:4px;
+        }
+        .tl-dot-system  { background:#48B6A2; }
+        .tl-dot-mod     { background:#F4B41A; }
+        .tl-dot-admin   { background:#dc3545; }
+        .tl-dot-tamper  { background:#6f42c1; }
+
+        /* ── Action log form ── */
+        .action-log-form {
+            background:#f8fdf9; border:1px solid rgba(47,143,126,0.15);
+            border-radius:10px; padding:1rem;
+        }
+
+        /* ── Immutability warning banner ── */
+        .immutability-toast {
+            background:linear-gradient(135deg,#2d0000,#5c0000);
+            color:#ff9999; border-radius:10px; padding:.75rem 1rem;
+            font-size:.85rem; font-weight:600; display:none; margin-top:.5rem;
+        }
+        .immutability-toast i { color:#ff4444; }
+
+        /* ── Search/Filter bar ── */
+        .filter-chip-sm {
+            border-radius:20px; font-size:.8rem; font-weight:600; padding:.3rem .85rem;
+            border:2px solid #dee2e6; background:transparent; color:var(--text-brown);
+            cursor:pointer; transition:all .2s;
+        }
+        .filter-chip-sm.active, .filter-chip-sm:hover {
+            background:var(--primary-green); color:#fff; border-color:var(--primary-green);
+        }
+
+        /* ── Stat cards ── */
+        .audit-stat {
+            border-radius:12px; border:none; padding:1.1rem 1.25rem;
+            background:#fff; box-shadow:0 2px 14px rgba(47,143,126,0.07);
+        }
+    </style>
+</head>
+<body>
+<div class="container-fluid">
+    <div class="row">
+
+        <!-- ══════════════════════════════════════
+             MODERATOR SIDEBAR
+        ══════════════════════════════════════ -->
+        <nav class="col-md-3 col-lg-2 d-md-block sidebar collapse bg-white shadow-sm">
+            <div class="position-sticky pt-4">
+                <div class="text-center mb-4">
+                    <i class="bi bi-heart-pulse-fill text-primary-custom" style="font-size:2rem;"></i>
+                    <h5 class="fw-bold text-primary-custom mt-2">MentalCare System</h5>
+                    <span class="badge" style="background:var(--primary-green);color:white;">Moderator Portal</span>
+                </div>
+                <ul class="nav flex-column mb-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="moderator-dashboard.html">
+                            <i class="bi bi-speedometer2 me-2"></i> Dashboard
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="moderator-forum.html">
+                            <i class="bi bi-shield-exclamation me-2"></i> Forum Moderation
+                            <span class="badge bg-danger ms-2">5</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="moderator-performance.html">
+                            <i class="bi bi-bar-chart-line me-2"></i> Therapist Performance
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="moderator-safety-audit.html">
+                            <i class="bi bi-journal-medical me-2"></i> Safety Audit Log
+                        </a>
+                    </li>
+                </ul>
+                <hr class="mx-3 mt-5">
+                <div class="px-3">
+                    <a href="index.html" class="btn btn-outline-danger w-100 mt-3 d-flex align-items-center justify-content-center">
+                        <i class="bi bi-box-arrow-right me-2"></i> Logout
+                    </a>
+                </div>
+            </div>
+        </nav>
+
+        <!-- ══════════════════════════════════════
+             MAIN CONTENT
+        ══════════════════════════════════════ -->
+        <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4 py-4 fade-in">
+
+            <!-- Page Header -->
+            <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-4 border-bottom">
+                <div>
+                    <h1 class="h2 text-primary-custom fw-bold">
+                        <i class="bi bi-journal-medical me-2"></i>Safety &amp; Audit Log
+                    </h1>
+                    <p class="text-secondary-custom mb-0">
+                        UC-35 — Non-repudiable log of every high-risk event and how it was handled.
+                        All entries are <strong>immutable</strong>.
+                    </p>
+                </div>
+                <div class="d-flex flex-column align-items-end gap-2">
+                    <span class="text-secondary-custom fw-bold">
+                        <i class="bi bi-person-circle me-1"></i> Moderator: Sarah M.
+                    </span>
+                    <span class="worm-badge">
+                        <i class="bi bi-shield-lock-fill"></i> WORM Compliant
+                    </span>
+                </div>
+            </div>
+
+            <!-- ── Stats ── -->
+            <div class="row g-3 mb-4">
+                <div class="col-6 col-md-3">
+                    <div class="audit-stat text-center">
+                        <div class="h4 fw-bold text-danger mb-0">4</div>
+                        <small class="text-secondary-custom">Critical Events</small>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="audit-stat text-center">
+                        <div class="h4 fw-bold mb-0" style="color:#e67e22;">6</div>
+                        <small class="text-secondary-custom">High-Risk Events</small>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="audit-stat text-center">
+                        <div class="h4 fw-bold text-primary-custom mb-0">18</div>
+                        <small class="text-secondary-custom">Actions Logged</small>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="audit-stat text-center">
+                        <div class="h4 fw-bold mb-0" style="color:#6f42c1;">2</div>
+                        <small class="text-secondary-custom">Tamper Attempts</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── Toolbar ── -->
+            <div class="d-flex align-items-center gap-3 mb-4 flex-wrap">
+                <div class="d-flex gap-2 flex-wrap">
+                    <button class="filter-chip-sm active" data-sevfilter="all">All</button>
+                    <button class="filter-chip-sm" data-sevfilter="critical">Critical</button>
+                    <button class="filter-chip-sm" data-sevfilter="high">High</button>
+                    <button class="filter-chip-sm" data-sevfilter="medium">Medium</button>
+                    <button class="filter-chip-sm" data-sevfilter="low">Low</button>
+                </div>
+                <div class="ms-auto input-group" style="max-width:280px;">
+                    <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+                    <input type="text" class="form-control border-start-0 ps-0" id="auditSearch"
+                           placeholder="Search event ID or description...">
+                </div>
+            </div>
+
+            <!-- ═══════════════════════════════════════════
+                 AUDIT LOG ENTRIES
+                 ═══════════════════════════════════════════ -->
+            <div id="auditLogContainer">
+
+                <!-- ── ENTRY 1: Crisis keyword → moderator action ── -->
+                <div class="audit-entry border-critical" data-severity="critical">
+                    <div class="p-4">
+                        <div class="d-flex align-items-start gap-3 mb-3">
+                            <div>
+                                <div class="d-flex align-items-center gap-2 flex-wrap mb-1">
+                                    <span class="font-monospace fw-bold text-danger" style="font-size:.9rem;">EVT-2026-0481</span>
+                                    <span class="sev-badge sev-critical">
+                                        <i class="bi bi-exclamation-octagon-fill"></i> Critical
+                                    </span>
+                                    <span class="badge bg-light text-secondary ms-1" style="font-size:.74rem;">
+                                        <i class="bi bi-robot me-1"></i>Auto-Generated
+                                    </span>
+                                    <small class="text-secondary-custom ms-auto">2026-04-29 · 14:12:03 UTC</small>
+                                </div>
+                                <p class="mb-0 fw-semibold">
+                                    Crisis keyword detected in forum post by anonymous user
+                                    <em>(QuietMoon_3312)</em>.
+                                </p>
+                                <small class="text-secondary-custom">
+                                    Trigger: UC-29 Keyword Scan · Post ID: POST-2026-0481
+                                </small>
+                            </div>
+                        </div>
+
+                        <!-- Timeline -->
+                        <div class="audit-timeline mb-3">
+                            <div class="tl-item">
+                                <div class="tl-dot tl-dot-system"></div>
+                                <div>
+                                    <strong>14:12:03</strong> — System flagged post and created audit entry.
+                                </div>
+                            </div>
+                            <div class="tl-item">
+                                <div class="tl-dot tl-dot-mod"></div>
+                                <div>
+                                    <strong>14:18:41</strong> — Moderator <em>Sarah M.</em> marked post "Under Review" and sent crisis resource link to user.
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Moderator: Append Action -->
+                        <div class="action-log-form" id="actionForm-evt0481">
+                            <label class="form-label small fw-semibold mb-1">
+                                <i class="bi bi-plus-circle me-1 text-primary-custom"></i>Append Action to Audit Record:
+                            </label>
+                            <div class="d-flex gap-2 flex-wrap">
+                                <select class="form-select form-select-sm" style="max-width:230px;" id="actionType-evt0481">
+                                    <option value="contacted_patient">Contacted patient directly</option>
+                                    <option value="escalated_admin">Escalated to Admin</option>
+                                    <option value="deleted_post">Deleted offending post</option>
+                                    <option value="no_further_action">No further action needed</option>
+                                </select>
+                                <input type="text" class="form-control form-control-sm" style="min-width:200px;"
+                                       id="actionNote-evt0481" placeholder="Brief note (optional)">
+                                <button class="btn btn-primary-custom btn-sm px-3"
+                                    onclick="Audit.appendAction('evt0481',this)">
+                                    <i class="bi bi-journal-plus me-1"></i> Log Action
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Immutability guard demo -->
+                        <div class="d-flex gap-2 mt-3">
+                            <button class="btn btn-sm btn-outline-secondary text-secondary-custom"
+                                onclick="Audit.tryTamper(this,'EVT-2026-0481')">
+                                <i class="bi bi-pencil me-1"></i> Try Edit (Forbidden)
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger"
+                                onclick="Audit.tryTamper(this,'EVT-2026-0481')">
+                                <i class="bi bi-trash me-1"></i> Try Delete (Forbidden)
+                            </button>
+                        </div>
+                        <div class="immutability-toast" id="tamperWarn-evt0481">
+                            <i class="bi bi-lock-fill me-2"></i>
+                            <strong>Denied.</strong> This log entry is immutable (WORM-protected).
+                            Attempted modification has been recorded.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ── ENTRY 2: High-Risk No-Show → welfare action ── -->
+                <div class="audit-entry border-high" data-severity="high">
+                    <div class="p-4">
+                        <div class="d-flex align-items-start gap-3 mb-3">
+                            <div class="w-100">
+                                <div class="d-flex align-items-center gap-2 flex-wrap mb-1">
+                                    <span class="font-monospace fw-bold" style="color:#e67e22; font-size:.9rem;">EVT-2026-0468</span>
+                                    <span class="sev-badge sev-high"><i class="bi bi-exclamation-triangle-fill"></i> High</span>
+                                    <span class="badge bg-light text-secondary ms-1" style="font-size:.74rem;">
+                                        <i class="bi bi-robot me-1"></i>Auto-Generated
+                                    </span>
+                                    <small class="text-secondary-custom ms-auto">2026-04-29 · 09:00:12 UTC</small>
+                                </div>
+                                <p class="mb-0 fw-semibold">High-risk patient no-show — welfare check triggered (UC-17).</p>
+                                <small class="text-secondary-custom">Patient: PT-1055 · Therapist: Dr. Harding</small>
+                            </div>
+                        </div>
+                        <div class="audit-timeline mb-3">
+                            <div class="tl-item">
+                                <div class="tl-dot tl-dot-system"></div>
+                                <div><strong>09:00:12</strong> — System marked session as No-Show and created audit entry.</div>
+                            </div>
+                            <div class="tl-item">
+                                <div class="tl-dot tl-dot-mod"></div>
+                                <div><strong>09:05:33</strong> — Dr. Harding logged welfare action: <em>"Called patient — no answer. Left voicemail."</em></div>
+                            </div>
+                            <div class="tl-item">
+                                <div class="tl-dot tl-dot-mod"></div>
+                                <div><strong>09:22:48</strong> — <em>Sarah M.</em> escalated to emergency contact protocol per policy.</div>
+                            </div>
+                        </div>
+                        <div class="action-log-form" id="actionForm-evt0468">
+                            <label class="form-label small fw-semibold mb-1">
+                                <i class="bi bi-plus-circle me-1 text-primary-custom"></i>Append Action to Audit Record:
+                            </label>
+                            <div class="d-flex gap-2 flex-wrap">
+                                <select class="form-select form-select-sm" style="max-width:230px;" id="actionType-evt0468">
+                                    <option value="contacted_patient">Contacted patient directly</option>
+                                    <option value="escalated_admin">Escalated to Admin</option>
+                                    <option value="patient_confirmed_safe">Patient confirmed safe</option>
+                                    <option value="no_further_action">No further action needed</option>
+                                </select>
+                                <input type="text" class="form-control form-control-sm" style="min-width:200px;"
+                                       id="actionNote-evt0468" placeholder="Brief note (optional)">
+                                <button class="btn btn-primary-custom btn-sm px-3"
+                                    onclick="Audit.appendAction('evt0468',this)">
+                                    <i class="bi bi-journal-plus me-1"></i> Log Action
+                                </button>
+                            </div>
+                        </div>
+                        <div class="d-flex gap-2 mt-3">
+                            <button class="btn btn-sm btn-outline-secondary"
+                                onclick="Audit.tryTamper(this,'EVT-2026-0468')">
+                                <i class="bi bi-pencil me-1"></i> Try Edit (Forbidden)
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger"
+                                onclick="Audit.tryTamper(this,'EVT-2026-0468')">
+                                <i class="bi bi-trash me-1"></i> Try Delete (Forbidden)
+                            </button>
+                        </div>
+                        <div class="immutability-toast" id="tamperWarn-evt0468">
+                            <i class="bi bi-lock-fill me-2"></i>
+                            <strong>Denied.</strong> This log entry is immutable (WORM-protected).
+                            Attempted modification has been recorded.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ── ENTRY 3: Tamper attempt already logged ── -->
+                <div class="audit-entry border-medium" data-severity="medium" style="border-color:#6f42c1;">
+                    <div class="p-4">
+                        <div class="d-flex align-items-start gap-3 mb-3">
+                            <div class="w-100">
+                                <div class="d-flex align-items-center gap-2 flex-wrap mb-1">
+                                    <span class="font-monospace fw-bold" style="color:#6f42c1; font-size:.9rem;">EVT-2026-0459</span>
+                                    <span class="sev-badge" style="background:#f0e6ff; color:#6f42c1; border:1.5px solid #d0b0ff;">
+                                        <i class="bi bi-shield-exclamation"></i> Tamper Attempt
+                                    </span>
+                                    <small class="text-secondary-custom ms-auto">2026-04-28 · 22:14:55 UTC</small>
+                                </div>
+                                <p class="mb-0 fw-semibold">
+                                    Unauthorized attempt to delete audit entry EVT-2026-0431.
+                                </p>
+                                <small class="text-secondary-custom">
+                                    Initiator: User account <code>admin_temp_01</code> · Action denied by system.
+                                </small>
+                            </div>
+                        </div>
+                        <div class="audit-timeline mb-3">
+                            <div class="tl-item">
+                                <div class="tl-dot tl-dot-tamper"></div>
+                                <div>
+                                    <strong>22:14:55</strong> — Deletion request received for EVT-2026-0431.
+                                    <span class="badge bg-danger ms-1">DENIED</span>
+                                </div>
+                            </div>
+                            <div class="tl-item">
+                                <div class="tl-dot tl-dot-system"></div>
+                                <div>
+                                    <strong>22:14:55</strong> — System auto-created this tamper-attempt entry. Account <code>admin_temp_01</code> flagged for review.
+                                </div>
+                            </div>
+                        </div>
+                        <div class="alert alert-warning py-2 mb-0 small">
+                            <i class="bi bi-info-circle me-1"></i>
+                            <strong>UC-35 Alt Scenario:</strong> When a deletion or modification attempt is made,
+                            the system denies the action and automatically creates a new log entry recording the attempt.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ── ENTRY 4: Low severity — forum post auto-scan ── -->
+                <div class="audit-entry border-low" data-severity="low">
+                    <div class="p-4">
+                        <div class="d-flex align-items-start gap-3 mb-3">
+                            <div class="w-100">
+                                <div class="d-flex align-items-center gap-2 flex-wrap mb-1">
+                                    <span class="font-monospace fw-bold text-primary-custom" style="font-size:.9rem;">EVT-2026-0441</span>
+                                    <span class="sev-badge sev-low"><i class="bi bi-info-circle"></i> Low</span>
+                                    <small class="text-secondary-custom ms-auto">2026-04-27 · 18:45:00 UTC</small>
+                                </div>
+                                <p class="mb-0 fw-semibold">Forum post cleared after moderator review — false positive keyword match.</p>
+                                <small class="text-secondary-custom">Moderator: Sarah M. · Post ID: POST-2026-0441</small>
+                            </div>
+                        </div>
+                        <div class="audit-timeline">
+                            <div class="tl-item">
+                                <div class="tl-dot tl-dot-system"></div>
+                                <div><strong>18:33:12</strong> — System flagged post (keyword match, score: 0.42).</div>
+                            </div>
+                            <div class="tl-item">
+                                <div class="tl-dot tl-dot-mod"></div>
+                                <div><strong>18:45:00</strong> — <em>Sarah M.</em> reviewed and cleared — "False positive; context is safe."</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div><!-- /auditLogContainer -->
+
+        </main>
+    </div>
+</div>
+
+<!-- Toast Container -->
+<div aria-live="polite" aria-atomic="true" class="position-relative">
+    <div id="toastContainer" class="toast-container position-fixed top-0 end-0 p-3"></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="assets/js/main.js"></script>
+<script src="assets/js/forum.js"></script>
+</body>
+</html>
