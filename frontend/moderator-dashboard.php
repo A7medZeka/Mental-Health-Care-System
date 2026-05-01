@@ -50,23 +50,23 @@
                 </div>
                 <ul class="nav flex-column mb-auto">
                     <li class="nav-item">
-                        <a class="nav-link active" href="moderator-dashboard.html">
+                        <a class="nav-link active" href="moderator-dashboard.php">
                             <i class="bi bi-speedometer2 me-2"></i> Dashboard
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="moderator-forum.html">
+                        <a class="nav-link" href="moderator-forum.php">
                             <i class="bi bi-shield-exclamation me-2"></i> Forum Moderation
                             <span class="badge bg-danger ms-auto" id="navBadgeForum">5</span>
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="moderator-performance.html">
+                        <a class="nav-link" href="moderator-performance.php">
                             <i class="bi bi-bar-chart-line me-2"></i> Therapist Performance
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="moderator-safety-audit.html">
+                        <a class="nav-link" href="moderator-safety-audit.php">
                             <i class="bi bi-journal-medical me-2"></i> Safety Audit Log
                             <span class="badge bg-warning text-dark ms-auto" id="navBadgeAudit">2</span>
                         </a>
@@ -74,7 +74,7 @@
                 </ul>
                 <hr class="mx-3 mt-5">
                 <div class="px-3">
-                    <a href="index.html" class="btn btn-outline-danger w-100 mt-3 d-flex align-items-center justify-content-center">
+                    <a href="index.php" class="btn btn-outline-danger w-100 mt-3 d-flex align-items-center justify-content-center">
                         <i class="bi bi-box-arrow-right me-2"></i> Logout
                     </a>
                 </div>
@@ -152,22 +152,22 @@
                 <div class="card-body">
                     <div class="row g-3">
                         <div class="col-6 col-md-3">
-                            <a href="moderator-forum.html" class="quick-action-btn w-100">
+                            <a href="moderator-forum.php" class="quick-action-btn w-100">
                                 <i class="bi bi-shield-exclamation"></i> Review Flagged Posts
                             </a>
                         </div>
                         <div class="col-6 col-md-3">
-                            <a href="moderator-performance.html" class="quick-action-btn w-100">
+                            <a href="moderator-performance.php" class="quick-action-btn w-100">
                                 <i class="bi bi-bar-chart-line"></i> Therapist Metrics
                             </a>
                         </div>
                         <div class="col-6 col-md-3">
-                            <a href="moderator-safety-audit.html" class="quick-action-btn w-100">
+                            <a href="moderator-safety-audit.php" class="quick-action-btn w-100">
                                 <i class="bi bi-journal-medical"></i> Safety Audit Log
                             </a>
                         </div>
                         <div class="col-6 col-md-3">
-                            <a href="patient-forum.html" class="quick-action-btn w-100">
+                            <a href="patient-forum.php" class="quick-action-btn w-100">
                                 <i class="bi bi-eye"></i> View Public Forum
                             </a>
                         </div>
@@ -181,7 +181,7 @@
                     <div class="card card-custom">
                         <div class="card-header bg-white border-0 pt-4 pb-0 d-flex justify-content-between align-items-center">
                             <h5 class="fw-bold mb-0" style="color:#dc3545;"><i class="bi bi-exclamation-octagon-fill me-2"></i>Recent Crisis Alerts (UC-29)</h5>
-                            <a href="moderator-forum.html" class="btn btn-sm btn-primary-custom rounded-pill">View All</a>
+                            <a href="moderator-forum.php" class="btn btn-sm btn-primary-custom rounded-pill">View All</a>
                         </div>
                         <div class="card-body">
                             <div class="alert-item bg-danger bg-opacity-10 d-flex align-items-center gap-3">
@@ -190,7 +190,7 @@
                                     <strong class="d-block">Crisis Keyword Detected</strong>
                                     <small class="text-secondary-custom">Post by <em>QuietMoon_3312</em> — flagged for immediate review · 12 min ago</small>
                                 </div>
-                                <a href="moderator-forum.html" class="btn btn-sm btn-danger">Review</a>
+                                <a href="moderator-forum.php" class="btn btn-sm btn-danger">Review</a>
                             </div>
                             <div class="alert-item" style="background:#fff3cd;">
                                 <div class="d-flex align-items-center gap-3">
@@ -199,7 +199,7 @@
                                         <strong class="d-block">User Reported Post</strong>
                                         <small class="text-secondary-custom">Post by <em>StormCloud_1182</em> — reported by 3 users · 1 hour ago</small>
                                     </div>
-                                    <a href="moderator-forum.html" class="btn btn-sm btn-warning text-dark">Review</a>
+                                    <a href="moderator-forum.php" class="btn btn-sm btn-warning text-dark">Review</a>
                                 </div>
                             </div>
                         </div>

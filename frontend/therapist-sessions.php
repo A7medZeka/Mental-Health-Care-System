@@ -28,22 +28,22 @@
                     
                     <ul class="nav flex-column mb-auto">
                         <li class="nav-item">
-                            <a class="nav-link" href="therapist-dashboard.html">
+                            <a class="nav-link" href="therapist-dashboard.php">
                                 <i class="bi bi-house-door me-2"></i> Dashboard
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link active" href="therapist-sessions.html">
+                            <a class="nav-link active" href="therapist-sessions.php">
                                 <i class="bi bi-calendar-event me-2"></i> Manage Sessions
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="therapist-patients.html">
+                            <a class="nav-link" href="therapist-patients.php">
                                 <i class="bi bi-people me-2"></i> Manage Patients
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="therapist-insights.html">
+                            <a class="nav-link" href="therapist-insights.php">
                                 <i class="bi bi-graph-up me-2"></i> Clinical Insights
                             </a>
                         </li>
@@ -122,7 +122,7 @@
                                 
                                 <div class="mb-3">
                                     <label class="form-label fw-semibold text-secondary-custom">New Note Entry (Draft)</label>
-                                    <textarea class="form-control" id="noteContent" rows="4" placeholder="Type session observations here..."></textarea>
+                                    <textarea class="form-control" id="noteContent" rows="4" placeholder="Type session observations here..." name="noteContent"></textarea>
                                 </div>
                                 <button class="btn btn-primary-custom w-100 mb-4" id="btnSaveNote">Save New Version</button>
                                 
@@ -165,4 +165,9 @@
     <script src="assets/js/main.js"></script>
     <script src="assets/js/therapist.js"></script>
 </body>
+
+<!--
+    Variabled
+        noteContent = noteContent
+-->
 </html>

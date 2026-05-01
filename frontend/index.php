@@ -1,3 +1,10 @@
+<?php
+session_start();
+$error_message   = $_SESSION['error_message']   ?? '';
+$success_message = $_SESSION['success_message'] ?? '';
+$active_form     = $_SESSION['active_form']     ?? '';
+unset($_SESSION['error_message'], $_SESSION['success_message'], $_SESSION['active_form']);
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -8,6 +15,8 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
     <!-- Custom CSS -->
     <link rel="stylesheet" href="assets/css/style.css">
 </head>
@@ -16,7 +25,7 @@
     <div class="container fade-in">
         <div class="row justify-content-center">
             <div class="col-md-8 col-lg-6 col-xl-5">
-                
+
                 <!-- Logo/Header -->
                 <div class="text-center mb-4">
                     <div class="d-inline-flex align-items-center justify-content-center bg-light-green rounded-circle mb-3" style="width: 80px; height: 80px;">
@@ -31,63 +40,45 @@
 
                 <!-- Login Card -->
                 <div class="card card-custom p-4 p-md-5">
-                    
-                    <form id="loginForm">
-                        
-                        <!-- Role Selection -->
-                        <div class="mb-4 text-center">
-                            <label class="form-label text-secondary-custom fw-semibold mb-3">Select your role</label>
-                            <ul class="nav nav-pills nav-fill gap-2 role-pills" id="roleTabs">
-                                <li class="nav-item">
-                                    <a class="nav-link active" href="#" data-role="patient">Patient</a>
-                                </li>
-                                <li class="nav-item">
-                                    <a class="nav-link" href="#" data-role="therapist">Therapist</a>
-                                </li>
-                                <li class="nav-item">
-                                    <a class="nav-link" href="#" data-role="admin">Admin</a>
-                                </li>
-                                <li class="nav-item">
-                                    <a class="nav-link" href="#" data-role="moderator">Moderator</a>
-                                </li>
-                            </ul>
-                        </div>
+
+                    <form action="handleForms.php" id="loginForm" method="POST" >
+                        <!-- action = login -->
+                        <input type="hidden" name="action" value="login">
 
                         <!-- Email Input -->
                         <div class="mb-3">
                             <label for="email" class="form-label text-secondary-custom">Email address</label>
-                            <input type="email" class="form-control py-2" id="email" placeholder="name@example.com" required>
+                            <input type="email" class="form-control py-2" id="email" name="email" placeholder="name@example.com" required>
                         </div>
-                        
+
                         <!-- Password Input -->
                         <div class="mb-4">
                             <label for="password" class="form-label text-secondary-custom">Password</label>
-                            <input type="password" class="form-control py-2" id="password" placeholder="••••••••" required>
+                            <input type="password" class="form-control py-2" id="password" name="password" placeholder="••••••••" required>
                             <div class="d-flex justify-content-end mt-2">
-                                <a href="#" class="text-decoration-none text-primary-custom small">Forgot password?</a>
+                                <a href="forgot-password.php" class="text-decoration-none text-primary-custom small">Forgot password?</a>
                             </div>
                         </div>
 
                         <!-- Submit Button -->
-                        <button type="submit" class="btn btn-primary-custom w-100 py-2 fw-semibold mb-3">
+                        <button type="submit" class="btn btn-primary-custom w-100 py-2 fw-semibold mb-3" >
                             Sign In
                         </button>
-                        
+
                         <div class="text-center">
-                            <p class="text-secondary-custom mb-0">Don't have an account? <a href="#" class="text-accent text-decoration-none fw-semibold">Sign up</a></p>
+                            <p class="text-secondary-custom mb-0">Don't have an account? <a href="signup.php" class="text-accent text-decoration-none fw-semibold">Sign up</a></p>
                         </div>
 
                     </form>
                 </div>
+
             </div>
         </div>
     </div>
 
     <!-- Toast Container -->
     <div aria-live="polite" aria-atomic="true" class="position-relative">
-        <div id="toastContainer" class="toast-container position-fixed top-0 end-0 p-3">
-            <!-- Toasts go here -->
-        </div>
+        <div id="toastContainer" class="toast-container position-fixed top-0 end-0 p-3"></div>
     </div>
 
     <!-- Bootstrap 5 JS Bundle -->
@@ -95,4 +86,11 @@
     <!-- Custom JS -->
     <script src="assets/js/main.js"></script>
 </body>
+
+<!--
+    Variabled
+        action = action (hidden, value="login")
+        email = email
+        password = password
+-->
 </html>

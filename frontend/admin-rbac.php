@@ -28,27 +28,27 @@
                     
                     <ul class="nav flex-column mb-auto">
                         <li class="nav-item">
-                            <a class="nav-link" href="admin-dashboard.html">
+                            <a class="nav-link" href="admin-dashboard.php">
                                 <i class="bi bi-speedometer2 me-2"></i> Dashboard
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="admin-patients.html">
+                            <a class="nav-link" href="admin-patients.php">
                                 <i class="bi bi-people me-2"></i> Manage Patients
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="admin-therapists.html">
+                            <a class="nav-link" href="admin-therapists.php">
                                 <i class="bi bi-person-badge me-2"></i> Therapists Verification
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link active" href="admin-rbac.html">
+                            <a class="nav-link active" href="admin-rbac.php">
                                 <i class="bi bi-shield-lock me-2"></i> RBAC Settings
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="admin-safety-logs.html">
+                            <a class="nav-link" href="admin-safety-logs.php">
                                 <i class="bi bi-journal-medical me-2"></i> Safety Logs
                             </a>
                         </li>
@@ -144,7 +144,7 @@
             <form id="rbacForm">
                 <div class="mb-3">
                     <label class="form-label fw-semibold">Assign Roles</label>
-                    <select multiple class="form-select" id="roleSelect" size="4">
+                    <select multiple class="form-select" id="roleSelect" size="4" name="roleSelect">
                         <option value="admin">System Administrator</option>
                         <option value="moderator">Clinic Moderator</option>
                         <option value="therapist">Therapist</option>
@@ -172,4 +172,9 @@
     <script src="assets/js/main.js"></script>
     <script src="assets/js/admin.js"></script>
 </body>
+
+<!--
+    Variabled
+        roleSelect = ( admin / moderator / therapist / patient )
+-->
 </html>

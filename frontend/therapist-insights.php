@@ -28,22 +28,22 @@
                     
                     <ul class="nav flex-column mb-auto">
                         <li class="nav-item">
-                            <a class="nav-link" href="therapist-dashboard.html">
+                            <a class="nav-link" href="therapist-dashboard.php">
                                 <i class="bi bi-house-door me-2"></i> Dashboard
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="therapist-sessions.html">
+                            <a class="nav-link" href="therapist-sessions.php">
                                 <i class="bi bi-calendar-event me-2"></i> Manage Sessions
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="therapist-patients.html">
+                            <a class="nav-link" href="therapist-patients.php">
                                 <i class="bi bi-people me-2"></i> Manage Patients
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link active" href="therapist-insights.html">
+                            <a class="nav-link active" href="therapist-insights.php">
                                 <i class="bi bi-graph-up me-2"></i> Clinical Insights
                             </a>
                         </li>
@@ -51,7 +51,7 @@
                     
                     <hr class="mx-3 mt-5">
                     <div class="px-3">
-                        <a href="index.html" class="btn btn-outline-danger w-100 mt-3 d-flex align-items-center justify-content-center">
+                        <a href="index.php" class="btn btn-outline-danger w-100 mt-3 d-flex align-items-center justify-content-center">
                             <i class="bi bi-box-arrow-right me-2"></i> Logout
                         </a>
                     </div>
@@ -79,7 +79,7 @@
                             </div>
                             <div class="card-body">
                                 <div class="d-flex gap-2 mb-4">
-                                    <select class="form-select w-auto" id="moodPatientSelect">
+                                    <select class="form-select w-auto" id="moodPatientSelect" name="moodPatientSelect">
                                         <option value="PT-1055">Jane Doe</option>
                                         <option value="PT-NEW">New Patient (No Data)</option>
                                     </select>
@@ -89,9 +89,9 @@
                                 <div id="moodReportArea" style="display:none;">
                                     <div class="d-flex gap-2 align-items-center mb-3 p-3 bg-light rounded border">
                                         <label class="fw-semibold">Date Range:</label>
-                                        <input type="date" class="form-control form-control-sm" id="startDate">
+                                        <input type="date" class="form-control form-control-sm" id="startDate" name="startDate">
                                         <span>to</span>
-                                        <input type="date" class="form-control form-control-sm" id="endDate">
+                                        <input type="date" class="form-control form-control-sm" id="endDate" name="endDate">
                                         <button class="btn btn-sm btn-dark" id="btnGenerateTrend">Generate</button>
                                     </div>
                                     
@@ -111,7 +111,7 @@
                             </div>
                             <div class="card-body">
                                 <div class="d-flex gap-2 mb-4">
-                                    <select class="form-select w-auto" id="insightPatientSelect">
+                                    <select class="form-select w-auto" id="insightPatientSelect" name="insightPatientSelect">
                                         <option value="PT-1055">Jane Doe (Has Data)</option>
                                         <option value="PT-LACK">John Smith (Incomplete Data)</option>
                                     </select>
@@ -121,7 +121,7 @@
                                 <div id="insightsAnalysisArea" style="display:none;">
                                     <div class="d-flex gap-2 align-items-center mb-3">
                                         <label class="fw-semibold">Select Window:</label>
-                                        <select class="form-select form-select-sm w-auto" id="correlationWindow">
+                                        <select class="form-select form-select-sm w-auto" id="correlationWindow" name="correlationWindow">
                                             <option value="lastMonth">Last Month</option>
                                             <option value="last3Months">Last 3 Months</option>
                                         </select>
@@ -154,4 +154,13 @@
     <script src="assets/js/main.js"></script>
     <script src="assets/js/therapist.js"></script>
 </body>
+
+<!--
+    Variabled
+        startDate = startDate
+        endDate = endDate
+        moodPatientSelect = ( PT-1055 / PT-NEW )
+        insightPatientSelect = ( PT-1055 / PT-LACK )
+        correlationWindow = ( lastMonth / last3Months )
+-->
 </html>

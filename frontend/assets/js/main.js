@@ -49,13 +49,13 @@ document.addEventListener('DOMContentLoaded', () => {
             // Simulate Authentication based on role
             // Since this is front-end only, we just redirect.
             if (role === 'admin') {
-                window.location.href = 'admin-dashboard.html';
+                window.location.href = 'patient-dashboard.php';
             } else if (role === 'moderator') {
-                window.location.href = 'moderator-dashboard.html';
+                window.location.href = 'moderator-dashboard.php';
             } else if (role === 'therapist') {
-                window.location.href = 'therapist-dashboard.html';
+                window.location.href = 'therapist-dashboard.php';
             } else {
-                window.location.href = 'patient-dashboard.html';
+                window.location.href = 'patient-dashboard.php';
             }
         });
 

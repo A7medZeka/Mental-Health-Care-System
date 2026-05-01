@@ -28,27 +28,27 @@
                     
                     <ul class="nav flex-column mb-auto">
                         <li class="nav-item">
-                            <a class="nav-link" href="admin-dashboard.html">
+                            <a class="nav-link" href="admin-dashboard.php">
                                 <i class="bi bi-speedometer2 me-2"></i> Dashboard
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="admin-patients.html">
+                            <a class="nav-link" href="admin-patients.php">
                                 <i class="bi bi-people me-2"></i> Manage Patients
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link active" href="admin-therapists.html">
+                            <a class="nav-link active" href="admin-therapists.php">
                                 <i class="bi bi-person-badge me-2"></i> Therapists Verification
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="admin-rbac.html">
+                            <a class="nav-link" href="admin-rbac.php">
                                 <i class="bi bi-shield-lock me-2"></i> RBAC Settings
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="admin-safety-logs.html">
+                            <a class="nav-link" href="admin-safety-logs.php">
                                 <i class="bi bi-journal-medical me-2"></i> Safety Logs
                             </a>
                         </li>
@@ -100,7 +100,7 @@
                                                 <td class="px-4 py-3"><span class="badge bg-warning text-dark">Pending Review</span></td>
                                                 <td class="px-4 py-3">
                                                     <div class="d-flex flex-column gap-2">
-                                                        <input type="file" class="form-control form-control-sm" id="licenseFile_2" accept=".pdf">
+                                                        <input type="file" class="form-control form-control-sm" id="licenseFile_2" accept=".pdf" name="licenseFile_2">
                                                         <button class="btn btn-sm btn-primary-custom verify-license-btn" data-id="2" data-expired="false">Verify Documentation</button>
                                                     </div>
                                                 </td>
@@ -114,7 +114,7 @@
                                                 <td class="px-4 py-3" id="status_3"><span class="badge bg-danger">Expired</span></td>
                                                 <td class="px-4 py-3">
                                                     <div class="d-flex flex-column gap-2">
-                                                        <input type="file" class="form-control form-control-sm" id="licenseFile_3" accept=".pdf">
+                                                        <input type="file" class="form-control form-control-sm" id="licenseFile_3" accept=".pdf" name="licenseFile_3">
                                                         <button class="btn btn-sm btn-danger verify-license-btn" data-id="3" data-expired="true">Verify & Renew</button>
                                                         <small class="text-muted">Click verify without file to see error.</small>
                                                     </div>
@@ -143,4 +143,10 @@
     <script src="assets/js/main.js"></script>
     <script src="assets/js/admin.js"></script>
 </body>
+
+<!--
+    Variabled
+        licenseFile_2 = licenseFile_2
+        licenseFile_3 = licenseFile_3
+-->
 </html>

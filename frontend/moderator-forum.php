@@ -83,30 +83,30 @@
                 </div>
                 <ul class="nav flex-column mb-auto">
                     <li class="nav-item">
-                        <a class="nav-link" href="moderator-dashboard.html">
+                        <a class="nav-link" href="moderator-dashboard.php">
                             <i class="bi bi-speedometer2 me-2"></i> Dashboard
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link active" href="moderator-forum.html">
+                        <a class="nav-link active" href="moderator-forum.php">
                             <i class="bi bi-shield-exclamation me-2"></i> Forum Moderation
                             <span class="badge bg-danger ms-2" id="navBadgeForum">5</span>
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="moderator-performance.html">
+                        <a class="nav-link" href="moderator-performance.php">
                             <i class="bi bi-bar-chart-line me-2"></i> Therapist Performance
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="moderator-safety-audit.html">
+                        <a class="nav-link" href="moderator-safety-audit.php">
                             <i class="bi bi-journal-medical me-2"></i> Safety Audit Log
                         </a>
                     </li>
                 </ul>
                 <hr class="mx-3 mt-5">
                 <div class="px-3">
-                    <a href="index.html" class="btn btn-outline-danger w-100 mt-3 d-flex align-items-center justify-content-center">
+                    <a href="index.php" class="btn btn-outline-danger w-100 mt-3 d-flex align-items-center justify-content-center">
                         <i class="bi bi-box-arrow-right me-2"></i> Logout
                     </a>
                 </div>

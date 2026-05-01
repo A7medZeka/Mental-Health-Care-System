@@ -28,37 +28,37 @@
                     
                     <ul class="nav flex-column mb-auto">
                         <li class="nav-item">
-                            <a class="nav-link active" href="admin-dashboard.html">
+                            <a class="nav-link active" href="admin-dashboard.php">
                                 <i class="bi bi-speedometer2 me-2"></i> Dashboard
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="admin-patients.html">
+                            <a class="nav-link" href="admin-patients.php">
                                 <i class="bi bi-people me-2"></i> Manage Patients
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="admin-therapists.html">
+                            <a class="nav-link" href="admin-therapists.php">
                                 <i class="bi bi-person-badge me-2"></i> Therapists Verification
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="admin-rbac.html">
+                            <a class="nav-link" href="admin-rbac.php">
                                 <i class="bi bi-shield-lock me-2"></i> RBAC Settings
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="admin-performance.html">
+                            <a class="nav-link" href="admin-performance.php">
                                 <i class="bi bi-bar-chart-line me-2"></i> Therapist Performance
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="admin-safety-logs.html">
+                            <a class="nav-link" href="admin-safety-logs.php">
                                 <i class="bi bi-journal-medical me-2"></i> Safety Logs
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="moderator-dashboard.html">
+                            <a class="nav-link" href="moderator-dashboard.php">
                                 <i class="bi bi-shield-exclamation me-2"></i> Forum Moderation
                             </a>
                         </li>
@@ -66,7 +66,7 @@
                     
                     <hr class="mx-3 mt-5">
                     <div class="px-3">
-                        <a href="index.html" class="btn btn-outline-danger w-100 mt-3 d-flex align-items-center justify-content-center">
+                        <a href="index.php" class="btn btn-outline-danger w-100 mt-3 d-flex align-items-center justify-content-center">
                             <i class="bi bi-box-arrow-right me-2"></i> Logout
                         </a>
                     </div>
@@ -145,9 +145,9 @@
                             <div class="card-body">
                                 <p class="text-secondary-custom">Select a module from the sidebar to begin managing the system.</p>
                                 <div class="d-flex gap-3 flex-wrap">
-                                    <a href="admin-patients.html" class="btn btn-primary-custom"><i class="bi bi-arrow-right-circle me-2"></i>Manage Patients</a>
-                                    <a href="admin-therapists.html" class="btn btn-primary-custom"><i class="bi bi-arrow-right-circle me-2"></i>Verify Therapists</a>
-                                    <a href="admin-rbac.html" class="btn btn-primary-custom"><i class="bi bi-arrow-right-circle me-2"></i>Configure RBAC</a>
+                                    <a href="admin-patients.php" class="btn btn-primary-custom"><i class="bi bi-arrow-right-circle me-2"></i>Manage Patients</a>
+                                    <a href="admin-therapists.php" class="btn btn-primary-custom"><i class="bi bi-arrow-right-circle me-2"></i>Verify Therapists</a>
+                                    <a href="admin-rbac.php" class="btn btn-primary-custom"><i class="bi bi-arrow-right-circle me-2"></i>Configure RBAC</a>
                                 </div>
                             </div>
                         </div>

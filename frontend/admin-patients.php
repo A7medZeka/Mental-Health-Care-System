@@ -28,37 +28,37 @@
                     
                     <ul class="nav flex-column mb-auto">
                         <li class="nav-item">
-                            <a class="nav-link" href="admin-dashboard.html">
+                            <a class="nav-link" href="admin-dashboard.php">
                                 <i class="bi bi-speedometer2 me-2"></i> Dashboard
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link active" href="admin-patients.html">
+                            <a class="nav-link active" href="admin-patients.php">
                                 <i class="bi bi-people me-2"></i> Manage Patients
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="admin-therapists.html">
+                            <a class="nav-link" href="admin-therapists.php">
                                 <i class="bi bi-person-badge me-2"></i> Therapists Verification
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="admin-rbac.html">
+                            <a class="nav-link" href="admin-rbac.php">
                                 <i class="bi bi-shield-lock me-2"></i> RBAC Settings
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="admin-performance.html">
+                            <a class="nav-link" href="admin-performance.php">
                                 <i class="bi bi-bar-chart-line me-2"></i> Therapist Performance
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="admin-safety-logs.html">
+                            <a class="nav-link" href="admin-safety-logs.php">
                                 <i class="bi bi-journal-medical me-2"></i> Safety Logs
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="moderator-dashboard.html">
+                            <a class="nav-link" href="moderator-dashboard.php">
                                 <i class="bi bi-shield-exclamation me-2"></i> Forum Moderation
                             </a>
                         </li>
@@ -84,7 +84,7 @@
                                 <div class="mb-3">
                                     <strong>ID:</strong> PT-98234 <br>
                                     <strong>Current Status:</strong> <span class="badge bg-secondary" id="currentStatusBadge">Registered</span>
-                                    <input type="hidden" id="currentStatus" value="registered">
+                                    <input type="hidden" id="currentStatus" value="registered" name="currentStatus">
                                 </div>
 
                                 <hr>
@@ -92,7 +92,7 @@
                                 <h6 class="text-secondary-custom mb-3">1. Update Status Transition</h6>
                                 <p class="small text-muted mb-2">Valid flow: Registered → Screened → Matched → Active</p>
                                 <div class="d-flex gap-2 align-items-center mb-3">
-                                    <select class="form-select w-auto" id="newStatusSelect">
+                                    <select class="form-select w-auto" id="newStatusSelect" name="newStatusSelect">
                                         <option value="registered">Registered</option>
                                         <option value="screened">Screened</option>
                                         <option value="matched">Matched</option>
@@ -114,7 +114,7 @@
                                 
                                 <div class="mb-3">
                                     <label for="intakeFile" class="form-label fw-semibold">Select PDF File</label>
-                                    <input class="form-control" type="file" id="intakeFile" accept=".pdf,.jpg,.exe">
+                                    <input class="form-control" type="file" id="intakeFile" accept=".pdf,.jpg,.exe" name="intakeFile">
                                 </div>
                                 <button class="btn btn-primary-custom" id="uploadIntakeBtn">
                                     <i class="bi bi-upload me-2"></i>Upload File
@@ -182,4 +182,11 @@
     <script src="assets/js/main.js"></script>
     <script src="assets/js/admin.js"></script>
 </body>
+
+<!--
+    Variabled
+        currentStatus = currentStatus (hidden, value="registered")
+        intakeFile = intakeFile
+        newStatusSelect = ( registered / screened / matched / active )
+-->
 </html>

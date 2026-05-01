@@ -28,22 +28,22 @@
                     
                     <ul class="nav flex-column mb-auto">
                         <li class="nav-item">
-                            <a class="nav-link" href="therapist-dashboard.html">
+                            <a class="nav-link" href="therapist-dashboard.php">
                                 <i class="bi bi-house-door me-2"></i> Dashboard
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="therapist-sessions.html">
+                            <a class="nav-link" href="therapist-sessions.php">
                                 <i class="bi bi-calendar-event me-2"></i> Manage Sessions
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link active" href="therapist-patients.html">
+                            <a class="nav-link active" href="therapist-patients.php">
                                 <i class="bi bi-people me-2"></i> Manage Patients
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="therapist-insights.html">
+                            <a class="nav-link" href="therapist-insights.php">
                                 <i class="bi bi-graph-up me-2"></i> Clinical Insights
                             </a>
                         </li>
@@ -51,7 +51,7 @@
                     
                     <hr class="mx-3 mt-5">
                     <div class="px-3">
-                        <a href="index.html" class="btn btn-outline-danger w-100 mt-3 d-flex align-items-center justify-content-center">
+                        <a href="index.php" class="btn btn-outline-danger w-100 mt-3 d-flex align-items-center justify-content-center">
                             <i class="bi bi-box-arrow-right me-2"></i> Logout
                         </a>
                     </div>
@@ -75,7 +75,7 @@
                         <div class="card card-custom h-100" id="contentAccessUI">
                             <div class="card-header bg-white border-0 pt-4 pb-0 d-flex justify-content-between align-items-center">
                                 <h5 class="fw-bold text-primary-custom"><i class="bi bi-shield-lock me-2"></i>Resource Access Rules</h5>
-                                <select class="form-select w-auto" id="patientSelect">
+                                <select class="form-select w-auto" id="patientSelect" name="patientSelect">
                                     <option value="PT-1055">Jane Doe (PT-1055)</option>
                                 </select>
                             </div>
@@ -129,4 +129,9 @@
     <script src="assets/js/main.js"></script>
     <script src="assets/js/therapist.js"></script>
 </body>
+
+<!--
+    Variabled
+        patientSelect = ( PT-1055 )
+-->
 </html>

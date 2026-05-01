@@ -100,30 +100,30 @@
                 </div>
                 <ul class="nav flex-column mb-auto">
                     <li class="nav-item">
-                        <a class="nav-link" href="moderator-dashboard.html">
+                        <a class="nav-link" href="moderator-dashboard.php">
                             <i class="bi bi-speedometer2 me-2"></i> Dashboard
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="moderator-forum.html">
+                        <a class="nav-link" href="moderator-forum.php">
                             <i class="bi bi-shield-exclamation me-2"></i> Forum Moderation
                             <span class="badge bg-danger ms-2">5</span>
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="moderator-performance.html">
+                        <a class="nav-link" href="moderator-performance.php">
                             <i class="bi bi-bar-chart-line me-2"></i> Therapist Performance
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link active" href="moderator-safety-audit.html">
+                        <a class="nav-link active" href="moderator-safety-audit.php">
                             <i class="bi bi-journal-medical me-2"></i> Safety Audit Log
                         </a>
                     </li>
                 </ul>
                 <hr class="mx-3 mt-5">
                 <div class="px-3">
-                    <a href="index.html" class="btn btn-outline-danger w-100 mt-3 d-flex align-items-center justify-content-center">
+                    <a href="index.php" class="btn btn-outline-danger w-100 mt-3 d-flex align-items-center justify-content-center">
                         <i class="bi bi-box-arrow-right me-2"></i> Logout
                     </a>
                 </div>
@@ -252,14 +252,14 @@
                                 <i class="bi bi-plus-circle me-1 text-primary-custom"></i>Append Action to Audit Record:
                             </label>
                             <div class="d-flex gap-2 flex-wrap">
-                                <select class="form-select form-select-sm" style="max-width:230px;" id="actionType-evt0481">
+                                <select class="form-select form-select-sm" style="max-width:230px;" id="actionType-evt0481" name="actionType-evt0481">
                                     <option value="contacted_patient">Contacted patient directly</option>
                                     <option value="escalated_admin">Escalated to Admin</option>
                                     <option value="deleted_post">Deleted offending post</option>
                                     <option value="no_further_action">No further action needed</option>
                                 </select>
                                 <input type="text" class="form-control form-control-sm" style="min-width:200px;"
-                                       id="actionNote-evt0481" placeholder="Brief note (optional)">
+                                       id="actionNote-evt0481" placeholder="Brief note (optional)" name="actionNote-evt0481">
                                 <button class="btn btn-primary-custom btn-sm px-3"
                                     onclick="Audit.appendAction('evt0481',this)">
                                     <i class="bi bi-journal-plus me-1"></i> Log Action
@@ -322,14 +322,14 @@
                                 <i class="bi bi-plus-circle me-1 text-primary-custom"></i>Append Action to Audit Record:
                             </label>
                             <div class="d-flex gap-2 flex-wrap">
-                                <select class="form-select form-select-sm" style="max-width:230px;" id="actionType-evt0468">
+                                <select class="form-select form-select-sm" style="max-width:230px;" id="actionType-evt0468" name="actionType-evt0468">
                                     <option value="contacted_patient">Contacted patient directly</option>
                                     <option value="escalated_admin">Escalated to Admin</option>
                                     <option value="patient_confirmed_safe">Patient confirmed safe</option>
                                     <option value="no_further_action">No further action needed</option>
                                 </select>
                                 <input type="text" class="form-control form-control-sm" style="min-width:200px;"
-                                       id="actionNote-evt0468" placeholder="Brief note (optional)">
+                                       id="actionNote-evt0468" placeholder="Brief note (optional)" name="actionNote-evt0468">
                                 <button class="btn btn-primary-custom btn-sm px-3"
                                     onclick="Audit.appendAction('evt0468',this)">
                                     <i class="bi bi-journal-plus me-1"></i> Log Action
@@ -439,4 +439,12 @@
 <script src="assets/js/main.js"></script>
 <script src="assets/js/forum.js"></script>
 </body>
+
+<!--
+    Variabled
+        actionNote-evt0481 = actionNote-evt0481
+        actionNote-evt0468 = actionNote-evt0468
+        actionType-evt0481 = ( contacted_patient / escalated_admin / deleted_post / no_further_action )
+        actionType-evt0468 = ( contacted_patient / escalated_admin / patient_confirmed_safe / no_further_action )
+-->
 </html>

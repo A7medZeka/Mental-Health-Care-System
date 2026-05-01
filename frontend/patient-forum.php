@@ -120,38 +120,56 @@
     <div class="row">
 
         <!-- Patient Sidebar -->
-        <nav class="col-md-3 col-lg-2 d-md-block patient-sidebar collapse shadow-sm">
-            <div class="position-sticky pt-4">
-                <div class="text-center mb-4">
+        <nav class="col-md-3 col-lg-2 d-md-block patient-sidebar collapse shadow-sm d-flex flex-column" style="height:100vh; position:sticky; top:0; overflow-y:auto;">
+            <div class="p-3 pb-0">
+                <div class="text-center mb-3">
                     <i class="bi bi-heart-pulse-fill text-primary-custom" style="font-size:2rem;"></i>
                     <h5 class="fw-bold text-primary-custom mt-2">MentalCare System</h5>
                 </div>
-                <ul class="nav flex-column mb-auto">
-                    <li class="nav-item">
-                        <a class="nav-link" href="#"><i class="bi bi-house-door me-2"></i> Dashboard</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="#"><i class="bi bi-calendar-event me-2"></i> My Sessions</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="#"><i class="bi bi-journal-richtext me-2"></i> My Journal</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link active" href="patient-forum.html"><i class="bi bi-chat-square-heart me-2"></i> Community Forum</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="#"><i class="bi bi-graph-up me-2"></i> Mood Tracker</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="#"><i class="bi bi-trophy me-2"></i> Wellness Goals</a>
-                    </li>
-                </ul>
-                <hr class="mx-3 mt-5">
-                <div class="px-3">
-                    <a href="index.html" class="btn btn-outline-danger w-100 mt-3 d-flex align-items-center justify-content-center">
-                        <i class="bi bi-box-arrow-right me-2"></i> Logout
-                    </a>
-                </div>
+            </div>
+            <ul class="nav flex-column flex-grow-1 px-2">
+                <li class="nav-item">
+                    <a class="nav-link" href="patient-dashboard.php"><i class="bi bi-speedometer2 me-2"></i>Dashboard</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="patient-dashboard.php"><i class="bi bi-clipboard-check me-2"></i>Onboarding Checklist</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="patient-dashboard.php"><i class="bi bi-person-check me-2"></i>My Therapist</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="patient-dashboard.php"><i class="bi bi-calendar-event me-2"></i>Appointments</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="patient-dashboard.php"><i class="bi bi-camera-video me-2"></i>Sessions</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="patient-dashboard.php"><i class="bi bi-heart-pulse me-2"></i>Mood Tracker</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="patient-dashboard.php"><i class="bi bi-bullseye me-2"></i>Wellness Goals</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="patient-dashboard.php"><i class="bi bi-journal-richtext me-2"></i>My Journal</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="patient-dashboard.php"><i class="bi bi-stars me-2"></i>Wellness Resources</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link active" href="patient-forum.php"><i class="bi bi-chat-square-heart me-2"></i>Community Forum</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="patient-dashboard.php"><i class="bi bi-credit-card me-2"></i>Payments &amp; Insurance</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="patient-dashboard.php"><i class="bi bi-file-earmark-check me-2"></i>Legal Consents</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="patient-dashboard.php" style="color:#dc3545;"><i class="bi bi-telephone-fill me-2" style="color:#dc3545;"></i><span style="color:#dc3545;">🆘 Emergency Help</span></a>
+                </li>
+            </ul>
+            <div class="px-2 pb-3 pt-2 border-top mt-2">
+                <a href="index.php" class="nav-link text-danger"><i class="bi bi-box-arrow-right me-2"></i>Logout</a>
             </div>
         </nav>
 
@@ -199,7 +217,7 @@
                             </button>
                         </div>
                         <textarea class="form-control mb-2" id="postContent" rows="3"
-                            placeholder="Share what's on your mind anonymously... (Be kind and supportive 💚)"></textarea>
+                            placeholder="Share what's on your mind anonymously... (Be kind and supportive 💚)" name="postContent"></textarea>
 
                         <!-- Keyword Alert Strip (UC-29) -->
                         <div class="keyword-alert-strip mb-3" id="keywordAlert">
@@ -208,7 +226,7 @@
                         </div>
 
                         <div class="d-flex align-items-center gap-3 flex-wrap">
-                            <select class="form-select form-select-sm" id="postCategory" style="max-width:200px;">
+                            <select class="form-select form-select-sm" id="postCategory" style="max-width:200px;" name="postCategory">
                                 <option value="general">💬 General Support</option>
                                 <option value="anxiety">😰 Anxiety & Stress</option>
                                 <option value="depression">🌧️ Depression</option>
@@ -366,7 +384,7 @@
             </div>
             <div class="modal-body p-4">
                 <p class="text-secondary-custom mb-3">Select your region to see relevant crisis resources:</p>
-                <select class="form-select mb-4" id="regionSelect" onchange="loadResources()">
+                <select class="form-select mb-4" id="regionSelect" onchange="loadResources()" name="regionSelect">
                     <option value="">-- Select Region --</option>
                     <option value="eg">🇪🇬 Egypt</option>
                     <option value="us">🇺🇸 United States</option>
@@ -390,4 +408,11 @@
 <script src="assets/js/main.js"></script>
 <script src="assets/js/forum.js"></script>
 </body>
+
+<!--
+    Variabled
+        postCategory = ( general / anxiety / depression / recovery / gratitude )
+        regionSelect = ( eg / us / uk / intl )
+        postContent = postContent
+-->
 </html>
