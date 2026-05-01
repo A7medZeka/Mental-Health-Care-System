@@ -169,7 +169,7 @@
                 </li>
             </ul>
             <div class="px-2 pb-3 pt-2 border-top mt-2">
-                <a href="index.php" class="nav-link text-danger"><i class="bi bi-box-arrow-right me-2"></i>Logout</a>
+                <a href="home.php" class="nav-link text-danger"><i class="bi bi-box-arrow-right me-2"></i>Logout</a>
             </div>
         </nav>
 

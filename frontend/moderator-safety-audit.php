@@ -123,7 +123,7 @@
                 </ul>
                 <hr class="mx-3 mt-5">
                 <div class="px-3">
-                    <a href="index.php" class="btn btn-outline-danger w-100 mt-3 d-flex align-items-center justify-content-center">
+                    <a href="home.php" class="btn btn-outline-danger w-100 mt-3 d-flex align-items-center justify-content-center">
                         <i class="bi bi-box-arrow-right me-2"></i> Logout
                     </a>
                 </div>

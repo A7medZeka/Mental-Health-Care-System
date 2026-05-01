@@ -36,7 +36,7 @@
           <li class="nav-item"><a class="nav-link" data-section="section-emergency" href="#" style="color:#dc3545;" onclick="showSection('section-emergency'); return false;"><i class="bi bi-telephone-fill me-2" style="color:#dc3545;"></i><span style="color:#dc3545;">🆘 Emergency Help</span></a></li>
         </ul>
         <div class="px-2 pb-3 pt-2 border-top mt-2">
-          <a href="index.php" class="nav-link text-danger"><i class="bi bi-box-arrow-right me-2"></i>Logout</a>
+          <a href="home.php" class="nav-link text-danger"><i class="bi bi-box-arrow-right me-2"></i>Logout</a>
         </div>
       </nav>
 
@@ -148,7 +148,7 @@
                   </li>
                   <li class="list-group-item d-flex align-items-center justify-content-between py-3">
                     <div class="d-flex align-items-center"><div class="bg-light-green text-primary-custom rounded-circle d-flex align-items-center justify-content-center me-3 fw-bold" style="width:40px;height:40px;">2</div><div><div class="fw-bold">Submit Intake Form</div><small class="text-secondary-custom">Answer clinical assessment questions</small></div></div>
-                    <div><span class="badge bg-warning text-dark me-2">Pending</span><button type="button" class="btn btn-sm btn-primary-custom" onclick="showToast('Intake form coming soon.','success')">Start Now</button></div>
+                    <div><span class="badge bg-warning text-dark me-2">Pending</span><button type="button" class="btn btn-sm btn-primary-custom" onclick="window.open('intake-form.php', '_blank')">Start Now</button></div>
                   </li>
                   <li class="list-group-item d-flex align-items-center justify-content-between py-3">
                     <div class="d-flex align-items-center"><div class="bg-light-green text-primary-custom rounded-circle d-flex align-items-center justify-content-center me-3 fw-bold" style="width:40px;height:40px;">3</div><div><div class="fw-bold">Verify Insurance</div><small class="text-secondary-custom">Add your insurance provider details</small></div></div>
