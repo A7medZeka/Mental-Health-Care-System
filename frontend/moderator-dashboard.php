@@ -1,3 +1,38 @@
+<?php
+require_once 'Validation.php';
+require_once 'connection.php';
+session_start();
+$method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
+if (empty($_SESSION['user_id'])) {
+    header('Location: index.php');
+    exit();
+}
+checkMethod($method);
+if ($_SESSION['role'] !== 'Moderator') {
+    $map = [
+        'Admin'     => 'admin-dashboard.php',
+        'Therapist' => 'therapist-dashboard.php',
+        'Patient'   => 'patient-dashboard.php',
+    ];
+    header('Location: ' . ($map[$_SESSION['role']] ?? 'index.php'));
+    exit();
+}
+$role = $_SESSION['role'] ?? 'Moderator';
+$first_name = $_SESSION['first_name'] ?? 'Moderator';
+$last_name  = $_SESSION['last_name']  ?? '';
+$email = $_SESSION['email'] ?? '';
+$age = $_SESSION['age'] ?? '';
+$user_id = $_SESSION['user_id'];
+$conn = getConnection();
+$stmt = $conn->prepare("SELECT age FROM users WHERE user_id = ?");
+$stmt->execute([$user_id]);
+$user = $stmt->fetch();
+$age = $user['age'] ?? '';
+$stmt2 = $conn->prepare("SELECT gender FROM users WHERE user_id = ?");
+$stmt2->execute([$user_id]);
+$user2 = $stmt2->fetch();
+$gender = $user2['gender'] ?? '';
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -89,7 +124,7 @@
                     <h1 class="h2 text-primary-custom fw-bold">Moderator Dashboard</h1>
                     <p class="text-secondary-custom mb-0">Overview of forum health, pending actions, and alerts.</p>
                 </div>
-                <span class="text-secondary-custom fw-bold"><i class="bi bi-person-circle me-1"></i> Moderator: Sarah M.</span>
+                        <span class="text-secondary-custom me-3"><i class="bi bi-person-circle me-1"></i> <?php echo 'Age: ' . ($age ?: 'N/A') . ' | ' . $role . ' | ' . htmlspecialchars($first_name . ' ' . $last_name).' | '. $gender; ?></span>
             </div>
 
             <!-- Stats Row -->

@@ -1,3 +1,24 @@
+<?php
+require_once 'Validation.php';
+require_once 'connection.php';
+session_start();
+$method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
+if (empty($_SESSION['user_id'])) {
+    header('Location: index.php');
+    exit();
+}
+checkMethod($method);
+if ($_SESSION['role'] !== 'Admin') {
+    $map = [
+        'Admin'     => 'admin-dashboard.php',
+        'Patient'   => 'patient-dashboard.php',
+        'Moderator' => 'moderator-dashboard.php',
+        ];
+        header('Location: ' . ($map[$_SESSION['role']] ?? 'index.php'));
+        exit();
+        }
+$email = $_SESSION['email'] ?? '';
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>

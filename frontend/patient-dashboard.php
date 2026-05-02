@@ -1,17 +1,14 @@
 <?php
+require_once 'Validation.php';
+require_once 'connection.php';
 session_start();
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 if (empty($_SESSION['user_id'])) {
     header('Location: index.php');
     exit();
 }
-if ($method !== 'POST') {
-    header('Location: index.php');
-    exit();
-}
- 
+checkMethod($method);
 if ($_SESSION['role'] !== 'Patient') {
-    // Wrong role — send them to the right dashboard
     $map = [
         'Admin'     => 'admin-dashboard.php',
         'Therapist' => 'therapist-dashboard.php',
@@ -24,8 +21,19 @@ if ($_SESSION['role'] !== 'Patient') {
 $first_name = $_SESSION['first_name'] ?? 'Patient';
 $last_name  = $_SESSION['last_name']  ?? '';
 $full_name  = trim("$first_name $last_name");
-$email      = $_SESSION['email']      ?? '';
-$role       = $_SESSION['role']       ?? 'Patient';
+$email = $_SESSION['email'] ?? '';
+$role = $_SESSION['role']?? 'Patient';
+$user_id = $_SESSION['user_id'];
+$conn = getConnection();
+$gender = $_SESSION['gender'] ?? '';
+$stmt = $conn->prepare("SELECT age FROM users WHERE user_id = ?");
+$stmt->execute([$user_id]);
+$user = $stmt->fetch();
+$age = $user['age'] ?? '';
+$stmt2 = $conn->prepare("SELECT gender FROM users WHERE user_id = ?");
+$stmt2->execute([$user_id]);
+$user2 = $stmt2->fetch();
+$gender = $user2['gender'] ?? '';
 ?>
 
 <!DOCTYPE html>
@@ -77,7 +85,7 @@ $role       = $_SESSION['role']       ?? 'Patient';
         <div id="section-dashboard">
           <div class="d-flex justify-content-between align-items-center mb-4">
             <h2 class="fw-bold text-primary-custom mb-0">Dashboard</h2>
-            <span class="text-secondary-custom"><i class="bi bi-person-circle me-1"></i> Patient: <?php echo htmlspecialchars($full_name); ?></span>
+                <span class="text-secondary-custom me-3"><i class="bi bi-person-circle me-1"></i> <?php echo 'Age: ' . ($age ?: 'N/A') . ' | ' . $role . ' | ' . htmlspecialchars($first_name . ' ' . $last_name).' | '. $gender; ?></span>
           </div>
 
           <div class="row g-4 mb-4">

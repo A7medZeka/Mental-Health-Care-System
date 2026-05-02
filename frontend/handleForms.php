@@ -1,14 +1,4 @@
 <?php
-/*
- * handleForms.php
- * Central form handler for holisticmentalhealth project.
- *
- * Handles:
- *   action = register           → Patient registration  → users table
- *   action = register_therapist → Therapist application → pending_therapists table
- *   action = login              → Login with role-based redirect
- *   action = reset_password     → Password reset via email or phone
- */
 
 session_start();
 
@@ -35,14 +25,14 @@ function redirectWith(string $location, string $type, string $message, string $a
 //! PATIENT REGISTRATION
 if ($action === 'register') {
 
-    $firstName = trim($_POST['firstName']       ?? '');
-    $lastName = trim($_POST['lastName']        ?? '');
-    $email = trim($_POST['signupEmail']     ?? '');
-    $nationalID = trim($_POST['nationalID']      ?? '');
-    $city = trim($_POST['city']            ?? '');
-    $phone = trim($_POST['phone']           ?? '');
-    $dob = trim($_POST['dob']             ?? '');
-    $genderRaw = $_POST['gender']          ?? '';
+    $firstName = trim($_POST['firstName']  ?? '');
+    $lastName = trim($_POST['lastName']  ?? '');
+    $email = trim($_POST['signupEmail']  ?? '');
+    $nationalID = trim($_POST['nationalID']  ?? '');
+    $city = trim($_POST['city'] ?? '');
+    $phone = trim($_POST['phone'] ?? '');
+    $dob = trim($_POST['dob'] ?? '');
+    $genderRaw = $_POST['gender'] ?? '';
     $password = $_POST['signupPassword']  ?? '';
     $confirmPass = $_POST['confirmPassword'] ?? '';
 
@@ -291,8 +281,8 @@ elseif ($action === 'reset_password') {
     $confirmPass =      $_POST['confirm_password'] ?? '';
 
     $error = '';
-    if      (empty($contact))                                      $error = 'Please enter your email address or phone number.';
-    elseif  (!validatePassword($newPassword))                      $error = 'Weak password. Min 8 chars with uppercase, lowercase, number & special character.';
+    if      (empty($contact)) $error = 'Please enter your email address or phone number.';
+    elseif  (!validatePassword($newPassword)) $error = 'Weak password. Min 8 chars with uppercase, lowercase, number & special character.';
     elseif  (!validateConfirmPassword($newPassword, $confirmPass)) $error = 'Passwords do not match.';
 
     if ($error) redirectWith('forgot-password.php', 'error', $error);

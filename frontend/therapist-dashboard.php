@@ -1,3 +1,39 @@
+<?php
+require_once 'Validation.php';
+require_once 'connection.php';
+session_start();
+$method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
+if (empty($_SESSION['user_id'])) {
+    header('Location: index.php');
+    exit();
+}
+checkMethod($method);
+if ($_SESSION['role'] !== 'Therapist') {
+    $map = [
+        'Admin'     => 'admin-dashboard.php',
+        'Patient'   => 'patient-dashboard.php',
+        'Moderator' => 'moderator-dashboard.php',
+    ];
+    header('Location: ' . ($map[$_SESSION['role']] ?? 'index.php'));
+    exit();
+}
+$role = $_SESSION['role'] ?? 'Therapist';
+$first_name = $_SESSION['first_name'] ?? 'Therapist';
+$last_name  = $_SESSION['last_name']  ?? '';
+$email = $_SESSION['email'] ?? '';
+$age = $_SESSION['age'] ?? '';
+$gender = $_SESSION['gender'] ?? '';
+$user_id = $_SESSION['user_id'];
+$conn = getConnection();
+$stmt = $conn->prepare("SELECT age FROM users WHERE user_id = ?");
+$stmt->execute([$user_id]);
+$user = $stmt->fetch();
+$age = $user['age'] ?? '';
+$stmt2 = $conn->prepare("SELECT gender FROM users WHERE user_id = ?");
+$stmt2->execute([$user_id]);
+$user2 = $stmt2->fetch();
+$gender = $user2['gender'] ?? '';
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -64,7 +100,7 @@
                 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-4 border-bottom">
                     <h1 class="h2 text-primary-custom fw-bold">Therapist Dashboard</h1>
                     <div class="d-flex align-items-center">
-                        <span class="text-secondary-custom me-3 fw-bold"><i class="bi bi-person-circle me-1"></i> Therapist: Dr. Harding</span>
+                        <span class="text-secondary-custom me-3"><i class="bi bi-person-circle me-1"></i> <?php echo 'Age: ' . ($age ?: 'N/A') . ' | ' . $role . ' | ' . htmlspecialchars($first_name . ' ' . $last_name).' | '. $gender; ?></span>
                         <span class="badge bg-success py-2 px-3"><i class="bi bi-person-check-fill me-2"></i>Verified</span>
                     </div>
                 </div>
