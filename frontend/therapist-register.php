@@ -432,7 +432,6 @@ session_start();
         });
 
         document.getElementById('therapistRegForm').addEventListener('submit', function(e) {
-            e.preventDefault();
             const pw = document.getElementById('password').value;
             const cpw = document.getElementById('confirmPassword').value;
             const msg = document.getElementById('passwordMatchMsg');
