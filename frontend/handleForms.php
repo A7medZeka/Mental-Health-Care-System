@@ -1,168 +1,336 @@
 <?php
+/*
+ * handleForms.php
+ * Central form handler for holisticmentalhealth project.
+ *
+ * Handles:
+ *   action = register           → Patient registration  → users table
+ *   action = register_therapist → Therapist application → pending_therapists table
+ *   action = login              → Login with role-based redirect
+ *   action = reset_password     → Password reset via email or phone
+ */
+
 session_start();
-require_once "Validation.php";
 
-unset($_SESSION['error_message'], $_SESSION['success_message']);
+// ── FIXED: use __DIR__ so path is always correct regardless of how PHP is called
+require_once __DIR__ . '/connection.php';
+require_once __DIR__ . '/Validation.php';
 
-if ($_SERVER["REQUEST_METHOD"] !== "POST") {
-    header("Location: index.php");
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    header('Location: index.php');
     exit();
 }
 
-// ─── DB Connection ─────────────────────────────────────────────────────────
-try {
-    $connection = new PDO("mysql:host=localhost;dbname=holisticmentalhealth;charset=utf8mb4", "root", "");
-    $connection->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-    $connection->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
-} catch (PDOException $e) {
-    error_log("DB connection failed: " . $e->getMessage());
-    $_SESSION['error_message'] = "A server error occurred. Please try again later.";
-    header("Location: index.php");
+$db     = getConnection();
+$action = trim($_POST['action'] ?? '');
+
+function redirectWith(string $location, string $type, string $message, string $activeForm = ''): void {
+    $_SESSION[$type . '_message'] = $message;
+    if ($activeForm !== '') {
+        $_SESSION['active_form'] = $activeForm;
+    }
+    header('Location: ' . $location);
     exit();
 }
 
-$action = $_POST['action'] ?? '';
-
 // ══════════════════════════════════════════════════════════════════════════════
-//  REGISTER
+//  PATIENT REGISTRATION
 // ══════════════════════════════════════════════════════════════════════════════
-if ($action === "register") {
+if ($action === 'register') {
 
-    $name         = trim($_POST['username']         ?? '');
-    $email        = trim($_POST['email']            ?? '');
-    $phone        = trim($_POST['phone']            ?? '');
-    $gender       =      $_POST['gender']           ?? '';
-    $age          = trim($_POST['age']              ?? '');
-    $dob          = trim($_POST['date']             ?? '');
-    $password     =      $_POST['password']         ?? '';
-    $confirm_pass =      $_POST['confirm_password'] ?? '';
+    $firstName   = trim($_POST['firstName']       ?? '');
+    $lastName    = trim($_POST['lastName']        ?? '');
+    $email       = trim($_POST['signupEmail']     ?? '');
+    $nationalID  = trim($_POST['nationalID']      ?? '');
+    $city        = trim($_POST['city']            ?? '');
+    $phone       = trim($_POST['phone']           ?? '');
+    $dob         = trim($_POST['dob']             ?? '');
+    $genderRaw   =      $_POST['gender']          ?? '';
+    $password    =      $_POST['signupPassword']  ?? '';
+    $confirmPass =      $_POST['confirmPassword'] ?? '';
 
-    // ── Validation ────────────────────────────────────────────────────────
-    if (!validateName($name)) {
-        $_SESSION['error_message'] = "Invalid name. Use letters only (min 2 characters).";
+    $genderMap = ['male' => 'Male', 'female' => 'Female', 'prefer_not' => 'Other'];
+    $gender    = $genderMap[$genderRaw] ?? '';
 
-    } elseif (!validateEmail($email)) {
-        $_SESSION['error_message'] = "Invalid email format.";
+    $error = '';
+    if      (!validateName($firstName))                          $error = 'Invalid first name. Use letters only (min 2 characters).';
+    elseif  (!validateName($lastName))                           $error = 'Invalid last name. Use letters only (min 2 characters).';
+    elseif  (!validateEmail($email))                             $error = 'Invalid email format.';
+    elseif  (empty($nationalID))                                 $error = 'National ID is required.';
+    elseif  (empty($city))                                       $error = 'City is required.';
+    elseif  (!empty($phone) && !validatePhoneNumber($phone))     $error = 'Invalid phone. Use Egyptian format: 01XXXXXXXXX.';
+    elseif  (!validateDateOfBirth($dob))                         $error = 'Invalid date of birth.';
+    elseif  (empty($gender))                                     $error = 'Please select a valid gender.';
+    elseif  (!validatePassword($password))                       $error = 'Weak password. Min 8 chars with uppercase, lowercase, number & special character.';
+    elseif  (!validateConfirmPassword($password, $confirmPass))  $error = 'Passwords do not match.';
 
-    } elseif (!validatePhoneNumber($phone)) {
-        $_SESSION['error_message'] = "Invalid phone number. Use Egyptian format: 01XXXXXXXXX (starts with 010 / 011 / 012 / 015).";
+    if ($error) redirectWith('signup.php', 'error', $error);
 
-    } elseif (!validateGender($gender)) {
-        $_SESSION['error_message'] = "Please select a valid gender.";
+    $chk = $db->prepare('SELECT user_id FROM users WHERE email = ? LIMIT 1');
+    $chk->execute([$email]);
+    if ($chk->rowCount() > 0)
+        redirectWith('signup.php', 'error', 'This email is already registered. Please log in.');
 
-    } elseif (!validateAge($age)) {
-        $_SESSION['error_message'] = "Invalid age. Must be a number between 1 and 120.";
+    $chkNID = $db->prepare('SELECT user_id FROM users WHERE national_id = ? LIMIT 1');
+    $chkNID->execute([$nationalID]);
+    if ($chkNID->rowCount() > 0)
+        redirectWith('signup.php', 'error', 'This National ID is already registered.');
 
-    } elseif (!validateDateOfBirth($dob)) {
-        $_SESSION['error_message'] = "Invalid date of birth. Use YYYY-MM-DD format and make sure it's not a future date.";
+    $baseUsername = strtolower($firstName . '.' . $lastName);
+    $username     = $baseUsername;
+    $suffix       = 1;
+    do {
+        $uChk = $db->prepare('SELECT user_id FROM users WHERE username = ? LIMIT 1');
+        $uChk->execute([$username]);
+        if ($uChk->rowCount() === 0) break;
+        $username = $baseUsername . $suffix++;
+    } while (true);
 
-    } elseif (!validatePassword($password)) {
-        $_SESSION['error_message'] = "Weak password. Must be at least 8 characters and include: uppercase letter, lowercase letter, number, and special character (e.g. @, #, !).";
-
-    } elseif (!validateConfirmPassword($password, $confirm_pass)) {
-        $_SESSION['error_message'] = "Passwords do not match.";
-    }
-
-    if (isset($_SESSION['error_message'])) {
-        $_SESSION['active_form'] = 'register';
-        header("Location: index.php");
-        exit();
-    }
-
-    // ── Check duplicate email ─────────────────────────────────────────────
-    $check = $connection->prepare("SELECT `id` FROM `users` WHERE `email` = ?");
-    $check->execute([$email]);
-
-    if ($check->rowCount() > 0) {
-        $_SESSION['error_message'] = "This email is already registered. Please login.";
-        $_SESSION['active_form'] = 'login';
-        header("Location: index.php");
-        exit();
-    }
-
-    // ── Insert ────────────────────────────────────────────────────────────
-    $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
-    $role = 'Patient'; // All self-registered users are Patients
-
-    $stmt = $connection->prepare(
-        "INSERT INTO `users` ('user_id',`email`, `password`, `first_name`,`last_name`, `phone`, `gender`, `age`, `date`, `role`)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+    $passwordHash = password_hash($password, PASSWORD_DEFAULT);
+    $stmt = $db->prepare(
+        'INSERT INTO users
+            (first_name, last_name, username, email, password_hash,
+             national_id, phone_number, date_of_birth, gender, city, role)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
     );
 
     try {
-        $stmt->execute([$email, $hashedPassword, $name, $name, $phone, $gender, (int)$age, $dob, $role]);
-        $_SESSION['success_message'] = "Registered successfully! Please login.";
-        $_SESSION['active_form'] = 'login';
-        header("Location: index.php");
-        exit();
+        $stmt->execute([
+            $firstName, $lastName, $username, $email, $passwordHash,
+            $nationalID, ($phone !== '' ? $phone : null),
+            $dob, $gender, $city, 'Patient',
+        ]);
+        redirectWith('index.php', 'success', 'Account created successfully! Please log in.', 'login');
     } catch (PDOException $e) {
-        error_log("Registration failed: " . $e->getMessage());
-        $_SESSION['error_message'] = "Registration failed. Please try again.";
-        $_SESSION['active_form'] = 'register';
-        header("Location: index.php");
-        exit();
+        error_log('[Register] ' . $e->getMessage());
+        redirectWith('signup.php', 'error', 'Registration failed. Please try again.');
+    }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  THERAPIST REGISTRATION
+// ══════════════════════════════════════════════════════════════════════════════
+elseif ($action === 'register_therapist') {
+
+    $db->exec("
+        CREATE TABLE IF NOT EXISTS pending_therapists (
+            id                    INT(11) UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            first_name            VARCHAR(50)  NOT NULL,
+            last_name             VARCHAR(50)  NOT NULL,
+            username              VARCHAR(50)  NOT NULL UNIQUE,
+            email                 VARCHAR(100) NOT NULL UNIQUE,
+            password_hash         VARCHAR(255) NOT NULL,
+            national_id           VARCHAR(20)  DEFAULT NULL,
+            phone_number          VARCHAR(20)  DEFAULT NULL,
+            date_of_birth         DATE         NOT NULL,
+            gender                ENUM('Male','Female','Other') DEFAULT NULL,
+            city                  VARCHAR(100) DEFAULT NULL,
+            specialization        VARCHAR(100) NOT NULL,
+            license_status        VARCHAR(50)  NOT NULL,
+            years_of_experience   INT(3)       NOT NULL DEFAULT 0,
+            availability_schedule VARCHAR(50)  NOT NULL,
+            credential_file_path  VARCHAR(255) DEFAULT NULL,
+            status                ENUM('Pending','Approved','Rejected') NOT NULL DEFAULT 'Pending',
+            submitted_at          TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+    ");
+
+    $firstName            = trim($_POST['firstName']            ?? '');
+    $lastName             = trim($_POST['lastName']             ?? '');
+    $email                = trim($_POST['email']                ?? '');
+    $nationalID           = trim($_POST['nationalID']           ?? '');
+    $city                 = trim($_POST['city']                 ?? '');
+    $phone                = trim($_POST['phone']                ?? '');
+    $dob                  = trim($_POST['dob']                  ?? '');
+    $genderRaw            =      $_POST['gender']               ?? '';
+    $specialization       = trim($_POST['specialization']       ?? '');
+    $licenseStatus        = trim($_POST['licenseStatus']        ?? '');
+    $yearsOfExperience    = trim($_POST['yearsOfExperience']    ?? '');
+    $availabilitySchedule = trim($_POST['availabilitySchedule'] ?? '');
+    $password             =      $_POST['password']             ?? '';
+    $confirmPass          =      $_POST['confirmPassword']      ?? '';
+
+    $genderMap = ['male' => 'Male', 'female' => 'Female', 'prefer_not' => 'Other'];
+    $gender    = $genderMap[$genderRaw] ?? '';
+
+    $error = '';
+    if      (!validateName($firstName))                                                              $error = 'Invalid first name.';
+    elseif  (!validateName($lastName))                                                               $error = 'Invalid last name.';
+    elseif  (!validateEmail($email))                                                                 $error = 'Invalid email format.';
+    elseif  (empty($nationalID))                                                                     $error = 'National ID is required.';
+    elseif  (empty($city))                                                                           $error = 'City is required.';
+    elseif  (!empty($phone) && !validatePhoneNumber($phone))                                         $error = 'Invalid phone. Use Egyptian format: 01XXXXXXXXX.';
+    elseif  (!validateDateOfBirth($dob))                                                             $error = 'Invalid date of birth.';
+    elseif  (empty($gender))                                                                         $error = 'Please select a valid gender.';
+    elseif  (empty($specialization))                                                                 $error = 'Specialization is required.';
+    elseif  (empty($licenseStatus))                                                                  $error = 'License status is required.';
+    elseif  (!is_numeric($yearsOfExperience) || $yearsOfExperience < 0 || $yearsOfExperience > 60)  $error = 'Years of experience must be 0–60.';
+    elseif  (empty($availabilitySchedule))                                                           $error = 'Availability schedule is required.';
+    elseif  (!validatePassword($password))                                                           $error = 'Weak password. Min 8 chars with uppercase, lowercase, number & special character.';
+    elseif  (!validateConfirmPassword($password, $confirmPass))                                      $error = 'Passwords do not match.';
+
+    $credentialPath = null;
+    if (!$error) {
+        if (empty($_FILES['credentialFile']['tmp_name'])) {
+            $error = 'Please upload your credentials PDF.';
+        } else {
+            $file     = $_FILES['credentialFile'];
+            $mimeType = mime_content_type($file['tmp_name']);
+
+            if ($file['error'] !== UPLOAD_ERR_OK) {
+                $error = 'File upload error. Please try again.';
+            } elseif ($file['size'] > 5 * 1024 * 1024) {
+                $error = 'Credential file must be under 5 MB.';
+            } elseif ($mimeType !== 'application/pdf') {
+                $error = 'Only PDF files are accepted for credentials.';
+            } else {
+                $uploadDir = __DIR__ . '/uploads/credentials/';
+                if (!is_dir($uploadDir)) mkdir($uploadDir, 0755, true);
+                $safeName       = time() . '_' . preg_replace('/[^a-zA-Z0-9._-]/', '_', basename($file['name']));
+                $credentialPath = 'uploads/credentials/' . $safeName;
+                if (!move_uploaded_file($file['tmp_name'], $uploadDir . $safeName))
+                    $error = 'Failed to save credential file. Please try again.';
+            }
+        }
+    }
+
+    if ($error) redirectWith('therapist-register.php', 'error', $error);
+
+    $chkUsers = $db->prepare('SELECT user_id FROM users WHERE email = ? LIMIT 1');
+    $chkUsers->execute([$email]);
+    if ($chkUsers->rowCount() > 0)
+        redirectWith('therapist-register.php', 'error', 'This email is already registered.');
+
+    $chkPend = $db->prepare('SELECT id FROM pending_therapists WHERE email = ? LIMIT 1');
+    $chkPend->execute([$email]);
+    if ($chkPend->rowCount() > 0)
+        redirectWith('therapist-register.php', 'error', 'An application with this email is already under review.');
+
+    $baseUsername = strtolower($firstName . '.' . $lastName);
+    $username     = $baseUsername;
+    $suffix       = 1;
+    do {
+        $uChk = $db->prepare('SELECT id FROM pending_therapists WHERE username = ? LIMIT 1');
+        $uChk->execute([$username]);
+        if ($uChk->rowCount() === 0) break;
+        $username = $baseUsername . $suffix++;
+    } while (true);
+
+    $passwordHash = password_hash($password, PASSWORD_DEFAULT);
+    $stmt = $db->prepare(
+        'INSERT INTO pending_therapists
+            (first_name, last_name, username, email, password_hash,
+             national_id, phone_number, date_of_birth, gender, city,
+             specialization, license_status, years_of_experience,
+             availability_schedule, credential_file_path, status)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+    );
+
+    try {
+        $stmt->execute([
+            $firstName, $lastName, $username, $email, $passwordHash,
+            $nationalID, ($phone !== '' ? $phone : null),
+            $dob, $gender, $city,
+            $specialization, $licenseStatus, (int)$yearsOfExperience,
+            $availabilitySchedule, $credentialPath, 'Pending',
+        ]);
+        redirectWith(
+            'therapist-register.php', 'success',
+            'Application submitted! You will be notified once an admin reviews your credentials.'
+        );
+    } catch (PDOException $e) {
+        error_log('[Therapist Register] ' . $e->getMessage());
+        redirectWith('therapist-register.php', 'error', 'Submission failed. Please try again.');
     }
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
 //  LOGIN
 // ══════════════════════════════════════════════════════════════════════════════
-elseif ($action === "login") {
+elseif ($action === 'login') {
 
-    $email    = trim($_POST['email']    ?? '');
+    $email = trim($_POST['email']    ?? '');
     $password = $_POST['password'] ?? '';
 
-    if (empty($email) || empty($password)) {
-        $_SESSION['error_message'] = "Please enter both email and password.";
-        $_SESSION['active_form'] = 'login';
-        header("Location: index.php");
-        exit();
-    }
+    if (empty($email) || empty($password))
+        redirectWith('index.php', 'error', 'Please enter both email and password.', 'login');
 
-    $stmt = $connection->prepare(
-        "SELECT `id`, `name`, `email`, `password`, `role`, `age`, `date` FROM `users` WHERE `email` = ?"
+    $stmt = $db->prepare(
+        'SELECT user_id, first_name, last_name, username, email, password_hash, role
+         FROM users WHERE email = ? LIMIT 1'
     );
     $stmt->execute([$email]);
     $user = $stmt->fetch();
 
-    if ($user && password_verify($password, $user['password'])) {
+    if ($user && password_verify($password, $user['password_hash'])) {
+
         session_regenerate_id(true);
 
-        $_SESSION['user_id']    = $user['id'];
-        $_SESSION['user_name']  = $user['name'];
+        $_SESSION['user_id']    = $user['user_id'];
+        $_SESSION['first_name'] = $user['first_name'];
+        $_SESSION['last_name']  = $user['last_name'];
+        $_SESSION['user_name']  = $user['first_name'] . ' ' . $user['last_name'];
+        $_SESSION['username']   = $user['username'];
         $_SESSION['user_email'] = $user['email'];
-        $_SESSION['user_role']  = $user['role'] ?? 'Patient';
-        $_SESSION['user_age']   = $user['age'];
-        $_SESSION['user_dob']   = $user['date'];
-        /*
-        Admin
-        Therapist
-        Patient
-        Moderator
-        */
-        if($_SESSION['user_role'] === 'Admin') {
-            header("Location: admin-dashboard.php");
-        } elseif($_SESSION['user_role'] === 'Therapist') {
-            header("Location: therapist-dashboard.php");
-        } 
-        elseif($_SESSION['user_role'] === 'Patient') {
-            header("Location: patient-dashboard.php");
-        }
-        else {
-            header("Location: moderator-dashboard.php");
-        }
+        $_SESSION['email']      = $user['email'];
+        $_SESSION['user_role']  = $user['role'];
+        $_SESSION['role']       = $user['role']; 
+        $redirectMap = [
+            'Admin'     => 'admin-dashboard.php',
+            'Therapist' => 'therapist-dashboard.php',
+            'Patient'   => 'patient-dashboard.php',
+            'Moderator' => 'moderator-dashboard.php',
+        ];
+
+        header('Location: ' . ($redirectMap[$user['role']] ?? 'index.php'));
         exit();
+
     } else {
-        $_SESSION['error_message'] = "Invalid email or password.";
-        $_SESSION['active_form'] = 'login';
-        header("Location: index.php");
-        exit();
+        redirectWith('index.php', 'error', 'Invalid email or password.', 'login');
     }
 }
 
-// ── Unknown action ─────────────────────────────────────────────────────────
+//! PASSWORD RESET
+elseif ($action === 'reset_password') {
+
+    $contact     = trim($_POST['email_or_phone']   ?? '');
+    $newPassword =      $_POST['new_password']     ?? '';
+    $confirmPass =      $_POST['confirm_password'] ?? '';
+
+    $error = '';
+    if      (empty($contact))                                      $error = 'Please enter your email address or phone number.';
+    elseif  (!validatePassword($newPassword))                      $error = 'Weak password. Min 8 chars with uppercase, lowercase, number & special character.';
+    elseif  (!validateConfirmPassword($newPassword, $confirmPass)) $error = 'Passwords do not match.';
+
+    if ($error) redirectWith('forgot-password.php', 'error', $error);
+
+    if (filter_var($contact, FILTER_VALIDATE_EMAIL)) {
+        $stmt = $db->prepare('SELECT user_id FROM users WHERE email = ? LIMIT 1');
+        $stmt->execute([$contact]);
+    } else {
+        $phone = preg_replace('/[\s\-+]/', '', $contact);
+        $stmt  = $db->prepare('SELECT user_id FROM users WHERE phone_number = ? LIMIT 1');
+        $stmt->execute([$phone]);
+    }
+
+    $user = $stmt->fetch();
+    if (!$user)
+        redirectWith('forgot-password.php', 'error', 'No account found with that email or phone number.');
+
+    $newHash = password_hash($newPassword, PASSWORD_DEFAULT);
+    $update  = $db->prepare('UPDATE users SET password_hash = ? WHERE user_id = ?');
+
+    try {
+        $update->execute([$newHash, $user['user_id']]);
+        redirectWith('index.php', 'success', 'Password reset successfully! Please log in.', 'login');
+    } catch (PDOException $e) {
+        error_log('[Reset Password] ' . $e->getMessage());
+        redirectWith('forgot-password.php', 'error', 'Password reset failed. Please try again.');
+    }
+}
+
+// ── Unknown action ──────────────────────────────────────────────────────────
 else {
-    header("Location: index.php");
+    header('Location: index.php');
     exit();
 }
-?>

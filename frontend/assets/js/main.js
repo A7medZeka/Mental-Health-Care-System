@@ -1,8 +1,8 @@
-/**
+/*
  * Global JavaScript for Mental Health Care Website
  */
 
-// Simple Toast Notification System
+//! Toast Notification System
 function showToast(message, type = 'success') {
     const toastContainer = document.getElementById('toastContainer');
     if (!toastContainer) return;
@@ -15,51 +15,24 @@ function showToast(message, type = 'success') {
 
     toastEl.innerHTML = `
         <div class="d-flex">
-            <div class="toast-body">
-                ${message}
-            </div>
+            <div class="toast-body">${message}</div>
             <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
         </div>
     `;
 
     toastContainer.appendChild(toastEl);
-    
-    // Initialize and show toast using Bootstrap's JS API
     const toast = new bootstrap.Toast(toastEl, { delay: 3000 });
     toast.show();
-
-    // Clean up DOM after hide
-    toastEl.addEventListener('hidden.bs.toast', () => {
-        toastEl.remove();
-    });
+    toastEl.addEventListener('hidden.bs.toast', () => toastEl.remove());
 }
 
-// Login Handling
+//! Login Form
+
 document.addEventListener('DOMContentLoaded', () => {
     const loginForm = document.getElementById('loginForm');
-    
-    if (loginForm) {
-        loginForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            
-            // Get selected role
-            const activeRoleBtn = document.querySelector('.role-pills .nav-link.active');
-            const role = activeRoleBtn ? activeRoleBtn.getAttribute('data-role') : 'patient';
-            
-            // Simulate Authentication based on role
-            // Since this is front-end only, we just redirect.
-            if (role === 'admin') {
-                window.location.href = 'admin-dashboard.php';
-            } else if (role === 'moderator') {
-                window.location.href = 'moderator-dashboard.php';
-            } else if (role === 'therapist') {
-                window.location.href = 'therapist-dashboard.php';
-            } else {
-                window.location.href = 'patient-dashboard.php';
-            }
-        });
 
-        // Role pill selection visual logic
+    if (loginForm) {
+        // Role pill selection — visual only, does NOT affect redirect
         const roleBtns = document.querySelectorAll('.role-pills .nav-link');
         roleBtns.forEach(btn => {
             btn.addEventListener('click', (e) => {
@@ -68,5 +41,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 btn.classList.add('active');
             });
         });
+
+        // Form submits naturally to handleForms.php via POST
+        // No e.preventDefault() here — do NOT add one
     }
 });

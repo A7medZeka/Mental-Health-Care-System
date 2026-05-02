@@ -1,3 +1,29 @@
+<?php
+session_start();
+ 
+if (empty($_SESSION['user_id'])) {
+    header('Location: index.php');
+    exit();
+}
+ 
+if ($_SESSION['role'] !== 'Patient') {
+    // Wrong role — send them to the right dashboard
+    $map = [
+        'Admin'     => 'admin-dashboard.php',
+        'Therapist' => 'therapist-dashboard.php',
+        'Moderator' => 'moderator-dashboard.php',
+    ];
+    header('Location: ' . ($map[$_SESSION['role']] ?? 'index.php'));
+    exit();
+}
+ 
+$first_name = $_SESSION['first_name'] ?? 'Patient';
+$last_name  = $_SESSION['last_name']  ?? '';
+$full_name  = trim("$first_name $last_name");
+$email      = $_SESSION['email']      ?? '';
+$role       = $_SESSION['role']       ?? 'Patient';
+?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -47,7 +73,7 @@
         <div id="section-dashboard">
           <div class="d-flex justify-content-between align-items-center mb-4">
             <h2 class="fw-bold text-primary-custom mb-0">Dashboard</h2>
-            <span class="text-secondary-custom"><i class="bi bi-person-circle me-1"></i> Patient: Sarah Johnson</span>
+            <span class="text-secondary-custom"><i class="bi bi-person-circle me-1"></i> Patient: <?php echo htmlspecialchars($full_name); ?></span>
           </div>
 
           <div class="row g-4 mb-4">

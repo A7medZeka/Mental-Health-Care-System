@@ -83,7 +83,7 @@
 
                 <!-- Registration Card -->
                 <div class="card card-custom p-4 p-md-5">
-                    <form id="therapistRegForm" novalidate>
+                    <form id="therapistRegForm" action="handleForms.php" method="POST" enctype="multipart/form-data" novalidate>  
                         <input type="hidden" name="action" value="register_therapist">
 
                         <!-- STEP 1: Personal Details -->
