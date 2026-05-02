@@ -74,7 +74,7 @@ $gender = $user2['gender'] ?? '';
           <li class="nav-item"><a class="nav-link" data-section="section-emergency" href="#" style="color:#dc3545;" onclick="showSection('section-emergency'); return false;"><i class="bi bi-telephone-fill me-2" style="color:#dc3545;"></i><span style="color:#dc3545;">🆘 Emergency Help</span></a></li>
         </ul>
         <div class="px-2 pb-3 pt-2 border-top mt-2">
-          <a href="home.php" class="nav-link text-danger"><i class="bi bi-box-arrow-right me-2"></i>Logout</a>
+          <a href="logout.php" class="nav-link text-danger"><i class="bi bi-box-arrow-right me-2"></i>Logout</a>
         </div>
       </nav>
 
