@@ -34,3 +34,4 @@ function getConnection(): PDO {
 
     return $connection;
 }
+?>
