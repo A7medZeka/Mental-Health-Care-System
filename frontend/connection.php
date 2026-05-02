@@ -25,7 +25,6 @@ function getConnection(): PDO {
             $connection = new PDO($dsn, DB_USER, DB_PASS, $options);
         } catch (PDOException $e) {
             error_log('[DB] Connection failed: ' . $e->getMessage());
-            // Redirect gracefully; never expose raw errors to the browser
             $_SESSION['error_message'] = 'A server error occurred. Please try again later.';
             header('Location: index.php');
             exit();

@@ -18,8 +18,16 @@ if ($_SESSION['role'] !== 'Admin') {
         exit();
         }
 $email = $_SESSION['email'] ?? '';
-
-
+$user_id = $_SESSION['user_id'] ?? 0;
+$totalPatients = 0;
+$conn = getConnection();
+$stmt = $conn->prepare("SELECT COUNT(*) AS total FROM users WHERE role = 'Patient'");
+$stmt->execute();
+$totalPatients = $stmt->fetch()['total'] ?? 0;
+$stmt = $conn->prepare("SELECT username  FROM users WHERE role = 'Patient'");
+$stmt->execute();
+$patientName = $stmt->fetch()['username'] ?? 0;
+$date = date('Y-m-d H:i:s');
 ?>
 
 <!DOCTYPE html>
@@ -160,27 +168,15 @@ $email = $_SESSION['email'] ?? '';
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <tr class="bg-light">
-                                        <td class="px-4 py-3 fw-semibold">PT-98234</td>
-                                        <td class="px-4 py-3">Jane Doe</td>
-                                        <td class="px-4 py-3">Oct 12, 2026</td>
-                                        <td class="px-4 py-3"><span class="badge bg-secondary">Registered</span></td>
-                                        <td class="px-4 py-3"><button class="btn btn-sm btn-outline-secondary" disabled>Currently Viewing</button></td>
-                                    </tr>
-                                    <tr>
-                                        <td class="px-4 py-3 fw-semibold">PT-98235</td>
-                                        <td class="px-4 py-3">John Smith</td>
-                                        <td class="px-4 py-3">Oct 10, 2026</td>
-                                        <td class="px-4 py-3"><span class="badge bg-info text-dark">Screened</span></td>
-                                        <td class="px-4 py-3"><button class="btn btn-sm btn-primary-custom">View Profile</button></td>
-                                    </tr>
-                                    <tr>
-                                        <td class="px-4 py-3 fw-semibold">PT-98236</td>
-                                        <td class="px-4 py-3">Emily Chen</td>
-                                        <td class="px-4 py-3">Oct 05, 2026</td>
-                                        <td class="px-4 py-3"><span class="badge bg-success">Active</span></td>
-                                        <td class="px-4 py-3"><button class="btn btn-sm btn-primary-custom">View Profile</button></td>
-                                    </tr>
+                                    <?php for ($i = 1; $i <= $totalPatients; $i++){ ?>
+                                        <tr class="bg-light">
+                                            <td class="px-4 py-3 fw-semibold">PT-<?php echo $i; ?></td>
+                                            <td class="px-4 py-3"> <?php echo $patientName; ?></td>
+                                            <td class="px-4 py-3"><?php echo date('M j, Y'); ?></td>
+                                            <td class="px-4 py-3"><span class="badge bg-secondary">Registered</span></td>
+                                            <td class="px-4 py-3"><button class="btn btn-sm btn-outline-secondary" disabled>Currently Viewing</button></td>
+                                        </tr>
+                                    <?php } ?>
                                 </tbody>
                             </table>
                         </div>

@@ -32,6 +32,16 @@ $stmt2 = $conn->prepare("SELECT gender FROM users WHERE user_id = ?");
 $stmt2->execute([$user_id]);
 $user2 = $stmt2->fetch();
 $gender = $user2['gender'] ?? '';
+$stmt3 = $conn->prepare("SELECT COUNT(*) AS total FROM users WHERE role = 'Patient'");
+$stmt3->execute();
+$totalPatients = $stmt3->fetch()['total'] ?? 0;
+$stmt4 = $conn->prepare("SELECT COUNT(*) AS total FROM pending_therapists WHERE status = 'Pending'");
+$stmt4->execute();
+$totalPendingTherapists = $stmt4->fetch()['total'] ?? 0;
+$stmt5 = $conn->prepare("SELECT COUNT(*) AS total FROM audit_logs");
+$stmt5->execute();
+$high_risk_alert = $stmt5->fetch()['total'] ?? 0;
+
 ?>
 
 
@@ -124,7 +134,9 @@ $gender = $user2['gender'] ?? '';
                                 <div class="d-flex justify-content-between align-items-center">
                                     <div>
                                         <h6 class="text-secondary-custom mb-2">Total Patients</h6>
-                                        <h3 class="fw-bold text-primary-custom mb-0">1,245</h3>
+                                        <h3 class="fw-bold text-primary-custom mb-0"><?php
+                                        echo $totalPatients;
+                                        ?></h3>
                                     </div>
                                     <div class="bg-light-green p-3 rounded-circle text-primary-custom">
                                         <i class="bi bi-people fs-4"></i>
@@ -141,7 +153,7 @@ $gender = $user2['gender'] ?? '';
                                 <div class="d-flex justify-content-between align-items-center">
                                     <div>
                                         <h6 class="text-secondary-custom mb-2">Therapists Pending</h6>
-                                        <h3 class="fw-bold text-accent mb-0">12</h3>
+                                        <h3 class="fw-bold text-accent mb-0"><?php echo $totalPendingTherapists; ?></h3>
                                     </div>
                                     <div class="bg-warning bg-opacity-10 p-3 rounded-circle text-accent">
                                         <i class="bi bi-person-badge fs-4"></i>
@@ -158,7 +170,7 @@ $gender = $user2['gender'] ?? '';
                                 <div class="d-flex justify-content-between align-items-center">
                                     <div>
                                         <h6 class="text-secondary-custom mb-2">High Risk Alerts</h6>
-                                        <h3 class="fw-bold text-danger mb-0">3</h3>
+                                        <h3 class="fw-bold text-danger mb-0"><?php echo $high_risk_alert; ?></h3>
                                     </div>
                                     <div class="bg-danger bg-opacity-10 p-3 rounded-circle text-danger">
                                         <i class="bi bi-exclamation-triangle fs-4"></i>
