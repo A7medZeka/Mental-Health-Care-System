@@ -97,29 +97,6 @@ if ($action === 'register') {
 //! THERAPIST REGISTRATION
 elseif ($action === 'register_therapist') {
 
-    $db->exec("
-        CREATE TABLE IF NOT EXISTS pending_therapists (
-            id                    INT(11) UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-            first_name            VARCHAR(50)  NOT NULL,
-            last_name             VARCHAR(50)  NOT NULL,
-            username              VARCHAR(50)  NOT NULL UNIQUE,
-            email                 VARCHAR(100) NOT NULL UNIQUE,
-            password_hash         VARCHAR(255) NOT NULL,
-            national_id           VARCHAR(20)  DEFAULT NULL,
-            phone_number          VARCHAR(20)  DEFAULT NULL,
-            date_of_birth         DATE         NOT NULL,
-            gender                ENUM('Male','Female','Other') DEFAULT NULL,
-            city                  VARCHAR(100) DEFAULT NULL,
-            specialization        VARCHAR(100) NOT NULL,
-            license_status        VARCHAR(50)  NOT NULL,
-            years_of_experience   INT(3)       NOT NULL DEFAULT 0,
-            availability_schedule VARCHAR(50)  NOT NULL,
-            credential_file_path  VARCHAR(255) DEFAULT NULL,
-            status                ENUM('Pending','Approved','Rejected') NOT NULL DEFAULT 'Pending',
-            submitted_at          TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-    ");
-
     $firstName = trim($_POST['firstName']?? '');
     $lastName = trim($_POST['lastName']?? '');
     $email = trim($_POST['email']?? '');
@@ -134,10 +111,8 @@ elseif ($action === 'register_therapist') {
     $availabilitySchedule = trim($_POST['availabilitySchedule'] ?? '');
     $password =$_POST['password']?? '';
     $confirmPass =$_POST['confirmPassword']?? '';
-
     $genderMap = ['male' => 'Male', 'female' => 'Female', 'prefer_not' => 'Other'];
     $gender    = $genderMap[$genderRaw] ?? '';
-
     $error = '';
     if      (!validateName($firstName)) $error = 'Invalid first name.';
     elseif  (!validateName($lastName)) $error = 'Invalid last name.';
@@ -153,7 +128,7 @@ elseif ($action === 'register_therapist') {
     elseif  (empty($availabilitySchedule)) $error = 'Availability schedule is required.';
     elseif  (!validatePassword($password)) $error = 'Weak password. Min 8 chars with uppercase, lowercase, number & special character.';
     elseif  (!validateConfirmPassword($password, $confirmPass)) $error = 'Passwords do not match.';
-
+    
     $credentialPath = null;
     if (!$error) {
         if (empty($_FILES['credentialFile']['tmp_name'])) {
