@@ -12,7 +12,6 @@
 
 session_start();
 
-// ── FIXED: use __DIR__ so path is always correct regardless of how PHP is called
 require_once __DIR__ . '/connection.php';
 require_once __DIR__ . '/Validation.php';
 
@@ -33,35 +32,33 @@ function redirectWith(string $location, string $type, string $message, string $a
     exit();
 }
 
-// ══════════════════════════════════════════════════════════════════════════════
-//  PATIENT REGISTRATION
-// ══════════════════════════════════════════════════════════════════════════════
+//! PATIENT REGISTRATION
 if ($action === 'register') {
 
-    $firstName   = trim($_POST['firstName']       ?? '');
-    $lastName    = trim($_POST['lastName']        ?? '');
-    $email       = trim($_POST['signupEmail']     ?? '');
-    $nationalID  = trim($_POST['nationalID']      ?? '');
-    $city        = trim($_POST['city']            ?? '');
-    $phone       = trim($_POST['phone']           ?? '');
-    $dob         = trim($_POST['dob']             ?? '');
-    $genderRaw   =      $_POST['gender']          ?? '';
-    $password    =      $_POST['signupPassword']  ?? '';
-    $confirmPass =      $_POST['confirmPassword'] ?? '';
+    $firstName = trim($_POST['firstName']       ?? '');
+    $lastName = trim($_POST['lastName']        ?? '');
+    $email = trim($_POST['signupEmail']     ?? '');
+    $nationalID = trim($_POST['nationalID']      ?? '');
+    $city = trim($_POST['city']            ?? '');
+    $phone = trim($_POST['phone']           ?? '');
+    $dob = trim($_POST['dob']             ?? '');
+    $genderRaw = $_POST['gender']          ?? '';
+    $password = $_POST['signupPassword']  ?? '';
+    $confirmPass = $_POST['confirmPassword'] ?? '';
 
     $genderMap = ['male' => 'Male', 'female' => 'Female', 'prefer_not' => 'Other'];
     $gender    = $genderMap[$genderRaw] ?? '';
 
     $error = '';
-    if      (!validateName($firstName))                          $error = 'Invalid first name. Use letters only (min 2 characters).';
-    elseif  (!validateName($lastName))                           $error = 'Invalid last name. Use letters only (min 2 characters).';
-    elseif  (!validateEmail($email))                             $error = 'Invalid email format.';
-    elseif  (empty($nationalID))                                 $error = 'National ID is required.';
-    elseif  (empty($city))                                       $error = 'City is required.';
-    elseif  (!empty($phone) && !validatePhoneNumber($phone))     $error = 'Invalid phone. Use Egyptian format: 01XXXXXXXXX.';
-    elseif  (!validateDateOfBirth($dob))                         $error = 'Invalid date of birth.';
-    elseif  (empty($gender))                                     $error = 'Please select a valid gender.';
-    elseif  (!validatePassword($password))                       $error = 'Weak password. Min 8 chars with uppercase, lowercase, number & special character.';
+    if      (!validateName($firstName)) $error = 'Invalid first name. Use letters only (min 2 characters).';
+    elseif  (!validateName($lastName)) $error = 'Invalid last name. Use letters only (min 2 characters).';
+    elseif  (!validateEmail($email)) $error = 'Invalid email format.';
+    elseif  (empty($nationalID)) $error = 'National ID is required.';
+    elseif  (empty($city)) $error = 'City is required.';
+    elseif  (!empty($phone) && !validatePhoneNumber($phone)) $error = 'Invalid phone. Use Egyptian format: 01XXXXXXXXX.';
+    elseif  (!validateDateOfBirth($dob)) $error = 'Invalid date of birth.';
+    elseif  (empty($gender)) $error = 'Please select a valid gender.';
+    elseif  (!validatePassword($password)) $error = 'Weak password. Min 8 chars with uppercase, lowercase, number & special character.';
     elseif  (!validateConfirmPassword($password, $confirmPass))  $error = 'Passwords do not match.';
 
     if ($error) redirectWith('signup.php', 'error', $error);
@@ -107,9 +104,7 @@ if ($action === 'register') {
     }
 }
 
-// ══════════════════════════════════════════════════════════════════════════════
-//  THERAPIST REGISTRATION
-// ══════════════════════════════════════════════════════════════════════════════
+//! THERAPIST REGISTRATION
 elseif ($action === 'register_therapist') {
 
     $db->exec("
@@ -135,39 +130,39 @@ elseif ($action === 'register_therapist') {
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
     ");
 
-    $firstName            = trim($_POST['firstName']            ?? '');
-    $lastName             = trim($_POST['lastName']             ?? '');
-    $email                = trim($_POST['email']                ?? '');
-    $nationalID           = trim($_POST['nationalID']           ?? '');
-    $city                 = trim($_POST['city']                 ?? '');
-    $phone                = trim($_POST['phone']                ?? '');
-    $dob                  = trim($_POST['dob']                  ?? '');
-    $genderRaw            =      $_POST['gender']               ?? '';
-    $specialization       = trim($_POST['specialization']       ?? '');
-    $licenseStatus        = trim($_POST['licenseStatus']        ?? '');
-    $yearsOfExperience    = trim($_POST['yearsOfExperience']    ?? '');
+    $firstName = trim($_POST['firstName']?? '');
+    $lastName = trim($_POST['lastName']?? '');
+    $email = trim($_POST['email']?? '');
+    $nationalID = trim($_POST['nationalID']?? '');
+    $city = trim($_POST['city']?? '');
+    $phone = trim($_POST['phone']?? '');
+    $dob = trim($_POST['dob']?? '');
+    $genderRaw = $_POST['gender']?? '';
+    $specialization = trim($_POST['specialization']?? '');
+    $licenseStatus = trim($_POST['licenseStatus']?? '');
+    $yearsOfExperience = trim($_POST['yearsOfExperience'] ?? '');
     $availabilitySchedule = trim($_POST['availabilitySchedule'] ?? '');
-    $password             =      $_POST['password']             ?? '';
-    $confirmPass          =      $_POST['confirmPassword']      ?? '';
+    $password =$_POST['password']?? '';
+    $confirmPass =$_POST['confirmPassword']?? '';
 
     $genderMap = ['male' => 'Male', 'female' => 'Female', 'prefer_not' => 'Other'];
     $gender    = $genderMap[$genderRaw] ?? '';
 
     $error = '';
-    if      (!validateName($firstName))                                                              $error = 'Invalid first name.';
-    elseif  (!validateName($lastName))                                                               $error = 'Invalid last name.';
-    elseif  (!validateEmail($email))                                                                 $error = 'Invalid email format.';
-    elseif  (empty($nationalID))                                                                     $error = 'National ID is required.';
-    elseif  (empty($city))                                                                           $error = 'City is required.';
-    elseif  (!empty($phone) && !validatePhoneNumber($phone))                                         $error = 'Invalid phone. Use Egyptian format: 01XXXXXXXXX.';
-    elseif  (!validateDateOfBirth($dob))                                                             $error = 'Invalid date of birth.';
-    elseif  (empty($gender))                                                                         $error = 'Please select a valid gender.';
-    elseif  (empty($specialization))                                                                 $error = 'Specialization is required.';
-    elseif  (empty($licenseStatus))                                                                  $error = 'License status is required.';
+    if      (!validateName($firstName)) $error = 'Invalid first name.';
+    elseif  (!validateName($lastName)) $error = 'Invalid last name.';
+    elseif  (!validateEmail($email)) $error = 'Invalid email format.';
+    elseif  (empty($nationalID)) $error = 'National ID is required.';
+    elseif  (empty($city)) $error = 'City is required.';
+    elseif  (!empty($phone) && !validatePhoneNumber($phone)) $error = 'Invalid phone. Use Egyptian format: 01XXXXXXXXX.';
+    elseif  (!validateDateOfBirth($dob)) $error = 'Invalid date of birth.';
+    elseif  (empty($gender)) $error = 'Please select a valid gender.';
+    elseif  (empty($specialization)) $error = 'Specialization is required.';
+    elseif  (empty($licenseStatus)) $error = 'License status is required.';
     elseif  (!is_numeric($yearsOfExperience) || $yearsOfExperience < 0 || $yearsOfExperience > 60)  $error = 'Years of experience must be 0–60.';
-    elseif  (empty($availabilitySchedule))                                                           $error = 'Availability schedule is required.';
-    elseif  (!validatePassword($password))                                                           $error = 'Weak password. Min 8 chars with uppercase, lowercase, number & special character.';
-    elseif  (!validateConfirmPassword($password, $confirmPass))                                      $error = 'Passwords do not match.';
+    elseif  (empty($availabilitySchedule)) $error = 'Availability schedule is required.';
+    elseif  (!validatePassword($password)) $error = 'Weak password. Min 8 chars with uppercase, lowercase, number & special character.';
+    elseif  (!validateConfirmPassword($password, $confirmPass)) $error = 'Passwords do not match.';
 
     $credentialPath = null;
     if (!$error) {
@@ -244,9 +239,7 @@ elseif ($action === 'register_therapist') {
     }
 }
 
-// ══════════════════════════════════════════════════════════════════════════════
-//  LOGIN
-// ══════════════════════════════════════════════════════════════════════════════
+//! LOGIN
 elseif ($action === 'login') {
 
     $email = trim($_POST['email']    ?? '');
@@ -329,7 +322,6 @@ elseif ($action === 'reset_password') {
     }
 }
 
-// ── Unknown action ──────────────────────────────────────────────────────────
 else {
     header('Location: index.php');
     exit();

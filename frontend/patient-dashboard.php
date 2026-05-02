@@ -1,7 +1,11 @@
 <?php
 session_start();
- 
+$method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 if (empty($_SESSION['user_id'])) {
+    header('Location: index.php');
+    exit();
+}
+if ($method !== 'POST') {
     header('Location: index.php');
     exit();
 }
