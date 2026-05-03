@@ -78,4 +78,11 @@ function validateDateOfBirth($input) {
     $dob   = new DateTime($input);
     return $dob <= $today;
 }
+/* ================= National ID ================= */
+function validateNationalID($input) {
+if (!isset($input)) return false;
+$input = trim($input);
+if (empty($input)) return false;
+return (bool) preg_match('/^(2\d{2}|3\d{2})\d{11}$/', $input);
+}
 ?>

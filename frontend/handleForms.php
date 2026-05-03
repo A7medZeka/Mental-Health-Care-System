@@ -42,6 +42,7 @@ if ($action === 'register') {
     $error = '';
     if      (!validateName($firstName)) $error = 'Invalid first name. Use letters only (min 2 characters).';
     elseif  (!validateName($lastName)) $error = 'Invalid last name. Use letters only (min 2 characters).';
+    elseif  (!validateNationalID($nationalID)) $error = 'Invalid National ID. Must be 14 digits starting with 2 or 3.';
     elseif  (!validateEmail($email)) $error = 'Invalid email format.';
     elseif  (empty($nationalID)) $error = 'National ID is required.';
     elseif  (empty($city)) $error = 'City is required.';
@@ -115,6 +116,7 @@ elseif ($action === 'register_therapist') {
     $gender    = $genderMap[$genderRaw] ?? '';
     $error = '';
     if      (!validateName($firstName)) $error = 'Invalid first name.';
+    elseif  (!validateNationalID($nationalID)) $error = 'Invalid National ID. Must be 14 digits starting with 2 or 3.';
     elseif  (!validateName($lastName)) $error = 'Invalid last name.';
     elseif  (!validateEmail($email)) $error = 'Invalid email format.';
     elseif  (empty($nationalID)) $error = 'National ID is required.';
