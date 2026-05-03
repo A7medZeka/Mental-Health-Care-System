@@ -135,7 +135,7 @@ unset($_SESSION['error_message'], $_SESSION['success_message'], $_SESSION['activ
                         <div class="row g-3 mb-3">
                             <div class="col-6">
                                 <label for="phone" class="form-label text-secondary-custom">Phone <span class="text-muted">(optional)</span></label>
-                                <input type="tel" class="form-control py-2" id="phone" name="phone" placeholder="+20 xxx xxx xxxx">
+                                <input type="tel" class="form-control py-2" id="phone" name="phone" placeholder="01 xxx xxx xxx">
                             </div>
                             <div class="col-6">
                                 <label for="dob" class="form-label text-secondary-custom">Date of Birth</label>

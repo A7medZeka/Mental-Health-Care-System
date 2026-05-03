@@ -5,6 +5,7 @@ $success_message = $_SESSION['success_message'] ?? '';
 $active_form     = $_SESSION['active_form']     ?? '';
 unset($_SESSION['error_message'], $_SESSION['success_message'], $_SESSION['active_form']);
 ?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -41,7 +42,21 @@ unset($_SESSION['error_message'], $_SESSION['success_message'], $_SESSION['activ
                 <!-- Login Card -->
                 <div class="card card-custom p-4 p-md-5">
 
-                    <form action="handleForms.php" id="loginForm" method="POST" >
+                    <!-- ✅ FIX: Use the $error_message variable captured at the top (session is already unset by now) -->
+                    <?php if (!empty($error_message)): ?>
+                        <div class="alert alert-danger text-center">
+                            <?= htmlspecialchars($error_message); ?>
+                        </div>
+                    <?php endif; ?>
+
+                    <!-- ✅ Also show success message if present -->
+                    <?php if (!empty($success_message)): ?>
+                        <div class="alert alert-success text-center">
+                            <?= htmlspecialchars($success_message); ?>
+                        </div>
+                    <?php endif; ?>
+
+                    <form action="handleForms.php" id="loginForm" method="POST">
                         <!-- action = login -->
                         <input type="hidden" name="action" value="login">
 
@@ -61,7 +76,7 @@ unset($_SESSION['error_message'], $_SESSION['success_message'], $_SESSION['activ
                         </div>
 
                         <!-- Submit Button -->
-                        <button type="submit" class="btn btn-primary-custom w-100 py-2 fw-semibold mb-3" >
+                        <button type="submit" class="btn btn-primary-custom w-100 py-2 fw-semibold mb-3">
                             Sign In
                         </button>
 
@@ -88,7 +103,7 @@ unset($_SESSION['error_message'], $_SESSION['success_message'], $_SESSION['activ
 </body>
 
 <!--
-    Variabled
+    Variables:
         action = action (hidden, value="login")
         email = email
         password = password

@@ -130,7 +130,7 @@ elseif ($action === 'register_therapist') {
     elseif  (empty($availabilitySchedule)) $error = 'Availability schedule is required.';
     elseif  (!validatePassword($password)) $error = 'Weak password. Min 8 chars with uppercase, lowercase, number & special character.';
     elseif  (!validateConfirmPassword($password, $confirmPass)) $error = 'Passwords do not match.';
-    
+
     $credentialPath = null;
     if (!$error) {
         if (empty($_FILES['credentialFile']['tmp_name'])) {
@@ -209,8 +209,8 @@ elseif ($action === 'register_therapist') {
 //! LOGIN
 elseif ($action === 'login') {
 
-    $email = trim($_POST['email']    ?? '');
-    $password = $_POST['password'] ?? '';
+    $email    = trim($_POST['email']    ?? '');
+    $password =      $_POST['password'] ?? '';
 
     if (empty($email) || empty($password))
         redirectWith('index.php', 'error', 'Please enter both email and password.', 'login');
@@ -234,7 +234,8 @@ elseif ($action === 'login') {
         $_SESSION['user_email'] = $user['email'];
         $_SESSION['email']      = $user['email'];
         $_SESSION['user_role']  = $user['role'];
-        $_SESSION['role']       = $user['role']; 
+        $_SESSION['role']       = $user['role'];
+
         $redirectMap = [
             'Admin'     => 'admin-dashboard.php',
             'Therapist' => 'therapist-dashboard.php',
@@ -246,6 +247,7 @@ elseif ($action === 'login') {
         exit();
 
     } else {
+        // ✅ FIX: was 'error_message' which produced key 'error_message_message' — now correctly 'error'
         redirectWith('index.php', 'error', 'Invalid email or password.', 'login');
     }
 }
