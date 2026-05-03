@@ -42,14 +42,12 @@ unset($_SESSION['error_message'], $_SESSION['success_message'], $_SESSION['activ
                 <!-- Login Card -->
                 <div class="card card-custom p-4 p-md-5">
 
-                    <!-- ✅ FIX: Use the $error_message variable captured at the top (session is already unset by now) -->
                     <?php if (!empty($error_message)): ?>
                         <div class="alert alert-danger text-center">
                             <?= htmlspecialchars($error_message); ?>
                         </div>
                     <?php endif; ?>
 
-                    <!-- ✅ Also show success message if present -->
                     <?php if (!empty($success_message)): ?>
                         <div class="alert alert-success text-center">
                             <?= htmlspecialchars($success_message); ?>

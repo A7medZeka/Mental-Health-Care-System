@@ -216,6 +216,10 @@ elseif ($action === 'login') {
 
     if (empty($email) || empty($password))
         redirectWith('index.php', 'error', 'Please enter both email and password.', 'login');
+    $stmt = $db->prepare('SELECT user_id FROM users WHERE email = ? LIMIT 1');
+    $stmt->execute([$email]);
+    if ($stmt->rowCount() === 0)
+        redirectWith('index.php', 'error', 'Email is not exist , please register first.', 'login');
 
     $stmt = $db->prepare(
         'SELECT user_id, first_name, last_name, username, email, password_hash, role
@@ -258,8 +262,16 @@ elseif ($action === 'login') {
 elseif ($action === 'reset_password') {
 
     $contact     = trim($_POST['email_or_phone']   ?? '');
+    if (empty($contact))
+        redirectWith('forgot-password.php', 'error', 'Please enter your email address or phone number.');
+    if (!validateEmail($contact) && !validatePhoneNumber($contact))
+        redirectWith('forgot-password.php', 'error', 'Please enter a valid email address or phone number.');
     $newPassword =      $_POST['new_password']     ?? '';
     $confirmPass =      $_POST['confirm_password'] ?? '';
+    $stmt = $db->prepare('SELECT user_id FROM users WHERE email = ? LIMIT 1');
+    $stmt->execute([$contact]);
+    if ($stmt->rowCount() === 0)
+        redirectWith('index.php', 'error', 'Email is not exist , please register first.', 'login');
 
     $error = '';
     if      (empty($contact)) $error = 'Please enter your email address or phone number.';

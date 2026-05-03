@@ -67,7 +67,6 @@ unset($_SESSION['error_message'], $_SESSION['success_message'], $_SESSION['activ
         <div class="row justify-content-center">
             <div class="col-md-8 col-lg-6 col-xl-5">
 
-                <!-- Logo/Header -->
                 <div class="text-center mb-4">
                     <div class="d-inline-flex align-items-center justify-content-center bg-light-green rounded-circle mb-3" style="width: 80px; height: 80px;">
                         <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" fill="var(--primary-green)" class="bi bi-heart-pulse-fill" viewBox="0 0 16 16">
@@ -79,8 +78,18 @@ unset($_SESSION['error_message'], $_SESSION['success_message'], $_SESSION['activ
                     <p class="text-secondary-custom">Enter your details below to reset your password</p>
                 </div>
 
-                <!-- Reset Card -->
                 <div class="card card-custom p-4 p-md-5">
+                    <?php if (!empty($error_message)): ?>
+                        <div class="alert alert-danger text-center">
+                            <?= htmlspecialchars($error_message); ?>
+                        </div>
+                    <?php endif; ?>
+
+                    <?php if (!empty($success_message)): ?>
+                        <div class="alert alert-success text-center">
+                            <?= htmlspecialchars($success_message); ?>
+                        </div>
+                    <?php endif; ?>
 
                     <form action="handleForms.php" id="forgotPasswordForm" method="POST">
                         <!-- //! action = reset_password -->
@@ -100,7 +109,6 @@ unset($_SESSION['error_message'], $_SESSION['success_message'], $_SESSION['activ
                             <div class="invalid-feedback">Please enter your email address or phone number.</div>
                         </div>
 
-                        <!-- New Password -->
                         <div class="mb-3">
                             <label for="newPassword" class="form-label text-secondary-custom">New Password</label>
                             <div class="input-icon-group">
