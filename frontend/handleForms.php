@@ -35,7 +35,7 @@ if ($action === 'register') {
     $genderRaw = $_POST['gender'] ?? '';
     $password = $_POST['signupPassword']  ?? '';
     $confirmPass = $_POST['confirmPassword'] ?? '';
-
+    $age = trim($_POST['age'] ?? '');
     $genderMap = ['male' => 'Male', 'female' => 'Female', 'prefer_not' => 'Other'];
     $gender    = $genderMap[$genderRaw] ?? '';
 
@@ -48,6 +48,7 @@ if ($action === 'register') {
     elseif  (empty($city)) $error = 'City is required.';
     elseif  (!empty($phone) && !validatePhoneNumber($phone)) $error = 'Invalid phone. Use Egyptian format: 01XXXXXXXXX.';
     elseif  (!validateDateOfBirth($dob)) $error = 'Invalid date of birth.';
+    elseif  (!validateAge($age)) $error = 'Invalid age. Must be between 18 and 120.';
     elseif  (empty($gender)) $error = 'Please select a valid gender.';
     elseif  (!validatePassword($password)) $error = 'Weak password. Min 8 chars with uppercase, lowercase, number & special character.';
     elseif  (!validateConfirmPassword($password, $confirmPass))  $error = 'Passwords do not match.';
@@ -106,6 +107,7 @@ elseif ($action === 'register_therapist') {
     $phone = trim($_POST['phone']?? '');
     $dob = trim($_POST['dob']?? '');
     $genderRaw = $_POST['gender']?? '';
+    $age = trim($_POST['age'] ?? '');
     $specialization = trim($_POST['specialization']?? '');
     $licenseStatus = trim($_POST['licenseStatus']?? '');
     $yearsOfExperience = trim($_POST['yearsOfExperience'] ?? '');
@@ -118,6 +120,7 @@ elseif ($action === 'register_therapist') {
     if      (!validateName($firstName)) $error = 'Invalid first name.';
     elseif  (!validateNationalID($nationalID)) $error = 'Invalid National ID. Must be 14 digits starting with 2 or 3.';
     elseif  (!validateName($lastName)) $error = 'Invalid last name.';
+    elseif  (!validateAge($age)) $error = 'Invalid age. Must be between 18 and 120.';
     elseif  (!validateEmail($email)) $error = 'Invalid email format.';
     elseif  (empty($nationalID)) $error = 'National ID is required.';
     elseif  (empty($city)) $error = 'City is required.';

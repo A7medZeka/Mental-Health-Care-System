@@ -62,6 +62,7 @@ function validateAge($input) {
     if ($input === '') return false;
     if (!ctype_digit((string)$input)) return false;
     $age = (int)$input;
+    if ($age < 18 || $age > 120) return false;
     return ($age >= 1 && $age <= 120);
 }
 
