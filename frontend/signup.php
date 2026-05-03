@@ -125,11 +125,6 @@ unset($_SESSION['error_message'], $_SESSION['success_message'], $_SESSION['activ
                             <input type="text" class="form-control py-2" id="nationalID" name="nationalID" placeholder="Enter your National ID" required>
                             <div class="invalid-feedback">Please enter your National ID.</div>
                         </div>
-                        <div class="mb-3">
-                            <label for="age" class="form-label text-secondary-custom">Age</label>
-                            <input type="number" class="form-control py-2" id="age" name="age" placeholder="Enter your age" required>
-                            <div class="invalid-feedback">Please enter your age.</div>
-                        </div>
 
                         <div class="mb-3">
                             <label for="city" class="form-label text-secondary-custom">City</label>

@@ -35,31 +35,30 @@ if ($action === 'register') {
     $genderRaw = $_POST['gender'] ?? '';
     $password = $_POST['signupPassword']  ?? '';
     $confirmPass = $_POST['confirmPassword'] ?? '';
-    $age = trim($_POST['age'] ?? '');
     $genderMap = ['male' => 'Male', 'female' => 'Female', 'prefer_not' => 'Other'];
     $gender    = $genderMap[$genderRaw] ?? '';
-
     $error = '';
     if      (!validateName($firstName)) $error = 'Invalid first name. Use letters only (min 2 characters).';
-    elseif  (!validateName($lastName)) $error = 'Invalid last name. Use letters only (min 2 characters).';
-    elseif  (!validateNationalID($nationalID)) $error = 'Invalid National ID. Must be 14 digits starting with 2 or 3.';
-    elseif  (!validateEmail($email)) $error = 'Invalid email format.';
-    elseif  (empty($nationalID)) $error = 'National ID is required.';
-    elseif  (empty($city)) $error = 'City is required.';
-    elseif  (!empty($phone) && !validatePhoneNumber($phone)) $error = 'Invalid phone. Use Egyptian format: 01XXXXXXXXX.';
-    elseif  (!validateDateOfBirth($dob)) $error = 'Invalid date of birth.';
-    elseif  (!validateAge($age)) $error = 'Invalid age. Must be between 18 and 120.';
-    elseif  (empty($gender)) $error = 'Please select a valid gender.';
-    elseif  (!validatePassword($password)) $error = 'Weak password. Min 8 chars with uppercase, lowercase, number & special character.';
-    elseif  (!validateConfirmPassword($password, $confirmPass))  $error = 'Passwords do not match.';
-
+    if  (!validateName($lastName)) $error = 'Invalid last name. Use letters only (min 2 characters).';
+    if  (!validateNationalID($nationalID)) $error = 'Invalid National ID. Must be 14 digits starting with 2 or 3.';
+    if  (!validateEmail($email)) $error = 'Invalid email format.';
+    if  (empty($city)) $error = 'City is required.';
+    if  (!empty($phone) && !validatePhoneNumber($phone)) $error = 'Invalid phone. Use Egyptian format: 01XXXXXXXXX.';
+    if  (!validateDateOfBirth($dob)) $error = 'Invalid date of birth.';
+    $age = $dob ? (int) ((new DateTime())->diff(new DateTime($dob))->y) : 0;
+    if  (empty($nationalID)) $error = 'National ID is required.';
+    if  (!validateAge($age)) $error = 'Invalid age. Must be between 18 and 120.';
+    if  (empty($gender)) $error = 'Please select a valid gender.';
+    if  (!validatePassword($password)) $error = 'Weak password. Min 8 chars with uppercase, lowercase, number & special character.';
+    if  (!validateConfirmPassword($password, $confirmPass))  $error = 'Passwords do not match.';
+    
     if ($error) redirectWith('signup.php', 'error', $error);
-
+    
     $chk = $db->prepare('SELECT user_id FROM users WHERE email = ? LIMIT 1');
     $chk->execute([$email]);
     if ($chk->rowCount() > 0)
         redirectWith('signup.php', 'error', 'This email is already registered. Please log in.');
-
+    
     $chkNID = $db->prepare('SELECT user_id FROM users WHERE national_id = ? LIMIT 1');
     $chkNID->execute([$nationalID]);
     if ($chkNID->rowCount() > 0)
@@ -107,7 +106,6 @@ elseif ($action === 'register_therapist') {
     $phone = trim($_POST['phone']?? '');
     $dob = trim($_POST['dob']?? '');
     $genderRaw = $_POST['gender']?? '';
-    $age = trim($_POST['age'] ?? '');
     $specialization = trim($_POST['specialization']?? '');
     $licenseStatus = trim($_POST['licenseStatus']?? '');
     $yearsOfExperience = trim($_POST['yearsOfExperience'] ?? '');
@@ -118,21 +116,22 @@ elseif ($action === 'register_therapist') {
     $gender    = $genderMap[$genderRaw] ?? '';
     $error = '';
     if      (!validateName($firstName)) $error = 'Invalid first name.';
-    elseif  (!validateNationalID($nationalID)) $error = 'Invalid National ID. Must be 14 digits starting with 2 or 3.';
-    elseif  (!validateName($lastName)) $error = 'Invalid last name.';
-    elseif  (!validateAge($age)) $error = 'Invalid age. Must be between 18 and 120.';
-    elseif  (!validateEmail($email)) $error = 'Invalid email format.';
-    elseif  (empty($nationalID)) $error = 'National ID is required.';
-    elseif  (empty($city)) $error = 'City is required.';
-    elseif  (!empty($phone) && !validatePhoneNumber($phone)) $error = 'Invalid phone. Use Egyptian format: 01XXXXXXXXX.';
-    elseif  (!validateDateOfBirth($dob)) $error = 'Invalid date of birth.';
-    elseif  (empty($gender)) $error = 'Please select a valid gender.';
-    elseif  (empty($specialization)) $error = 'Specialization is required.';
-    elseif  (empty($licenseStatus)) $error = 'License status is required.';
-    elseif  (!is_numeric($yearsOfExperience) || $yearsOfExperience < 0 || $yearsOfExperience > 60)  $error = 'Years of experience must be 0–60.';
-    elseif  (empty($availabilitySchedule)) $error = 'Availability schedule is required.';
-    elseif  (!validatePassword($password)) $error = 'Weak password. Min 8 chars with uppercase, lowercase, number & special character.';
-    elseif  (!validateConfirmPassword($password, $confirmPass)) $error = 'Passwords do not match.';
+    if  (!validateNationalID($nationalID)) $error = 'Invalid National ID. Must be 14 digits starting with 2 or 3.';
+    if  (!validateName($lastName)) $error = 'Invalid last name.';
+    if  (!validateEmail($email)) $error = 'Invalid email format.';
+    if  (empty($nationalID)) $error = 'National ID is required.';
+    if  (empty($city)) $error = 'City is required.';
+    if  (!empty($phone) && !validatePhoneNumber($phone)) $error = 'Invalid phone. Use Egyptian format: 01XXXXXXXXX.';
+    if  (!validateDateOfBirth($dob)) $error = 'Invalid date of birth.';
+    if  (empty($gender)) $error = 'Please select a valid gender.';
+    if  (empty($specialization)) $error = 'Specialization is required.';
+    if  (empty($licenseStatus)) $error = 'License status is required.';
+    if  (!is_numeric($yearsOfExperience) || $yearsOfExperience < 0 || $yearsOfExperience > 60)  $error = 'Years of experience must be 0–60.';
+    if  (empty($availabilitySchedule)) $error = 'Availability schedule is required.';
+    if  (!validatePassword($password)) $error = 'Weak password. Min 8 chars with uppercase, lowercase, number & special character.';
+    if  (!validateConfirmPassword($password, $confirmPass)) $error = 'Passwords do not match.';
+    $age = $dob ? (int) ((new DateTime())->diff(new DateTime($dob))->y) : 0;
+    if  (!validateAge($age)) $error = 'Invalid age. Must be between 18 and 120.';
 
     $credentialPath = null;
     if (!$error) {
