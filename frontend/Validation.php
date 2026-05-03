@@ -43,7 +43,7 @@ function validateName($input) {
 function validatePhoneNumber($input) {
     if (!isset($input)) return false;
     $input = trim($input);
-    if (empty($input)) return false;
+    if (empty($input)) return true;
     return (bool) preg_match('/^01[0125][0-9]{8}$/', $input);
 }
 
