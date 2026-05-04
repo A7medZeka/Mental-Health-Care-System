@@ -18,6 +18,11 @@ if ($_SESSION['role'] !== 'Admin') {
         exit();
         }
 $email = $_SESSION['email'] ?? '';
+$user_id = $_SESSION['user_id'] ?? '';
+$username = $_SESSION['username'] ?? '';
+$age = $_SESSION['age'] ?? '';
+$gender = $_SESSION['gender'] ?? '';
+$role = $_SESSION['role'] ?? '';
 ?>
 <!DOCTYPE html>
 <html lang="en">

@@ -230,30 +230,6 @@ $featured = $patients[0] ?? null;
                     </div>
                 </div>
 
-                <!-- Intake Documentation -->
-                <div class="col-lg-6 mb-4">
-                    <div class="card card-custom h-100">
-                        <div class="card-header bg-white border-0 pt-4 pb-0">
-                            <h5 class="fw-bold text-primary-custom">Intake Documentation</h5>
-                        </div>
-                        <div class="card-body">
-                            <p class="text-secondary-custom mb-3">
-                                Upload intake form for: <strong id="intakePatientName">
-                                    <?php echo htmlspecialchars($featured['first_name'] . ' ' . $featured['last_name']); ?>
-                                </strong>
-                            </p>
-                            <div class="mb-3">
-                                <label for="intakeFile" class="form-label fw-semibold">Select PDF File (max 5 MB)</label>
-                                <input class="form-control" type="file" id="intakeFile" accept=".pdf">
-                            </div>
-                            <button class="btn btn-primary-custom" id="uploadIntakeBtn">
-                                <i class="bi bi-upload me-2"></i>Upload File
-                            </button>
-                            <div id="uploadFeedback" class="mt-2 small"></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
             <?php else: ?>
                 <div class="alert alert-info">No patients found in the system.</div>
             <?php endif; ?>
