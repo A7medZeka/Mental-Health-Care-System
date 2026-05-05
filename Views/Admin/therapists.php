@@ -28,7 +28,6 @@ $user_id  = $_SESSION['user_id']  ?? '';
 $username = $_SESSION['username'] ?? '';
 $role     = $_SESSION['role']     ?? '';
 
-// ── Fetch & classify data ─────────────────────────────────────────────────────
 $admin = new Admin();
 
 $pendingTherapists = $admin->getPendingTherapistsList();
@@ -56,7 +55,6 @@ foreach ($activeTherapists as $t) {
     }
 }
 
-// Default open tab: pending if any exist, otherwise verified
 $defaultTab = count($pendingTherapists) ? 'pendingSection' : 'verifiedSection';
 ?>
 <!DOCTYPE html>
@@ -103,7 +101,6 @@ $defaultTab = count($pendingTherapists) ? 'pendingSection' : 'verifiedSection';
 <div class="container-fluid">
 <div class="row">
 
-    <!-- ═══════════════════════ SIDEBAR ═══════════════════════ -->
     <nav class="col-md-3 col-lg-2 d-md-block sidebar collapse bg-white shadow-sm">
         <div class="position-sticky pt-4">
             <div class="text-center mb-4">
@@ -145,7 +142,6 @@ $defaultTab = count($pendingTherapists) ? 'pendingSection' : 'verifiedSection';
         </div>
     </nav>
 
-    <!-- ═══════════════════════ MAIN CONTENT ═══════════════════════ -->
     <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4 py-4 fade-in">
 
         <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-4 border-bottom">
@@ -155,7 +151,6 @@ $defaultTab = count($pendingTherapists) ? 'pendingSection' : 'verifiedSection';
             </div>
         </div>
 
-        <!-- ── Tab Pills ───────────────────────────────────────────────── -->
         <ul class="nav section-tabs mb-4" id="sectionTabs">
             <li class="nav-item">
                 <a class="nav-link" href="#" data-target="pendingSection">
@@ -189,9 +184,6 @@ $defaultTab = count($pendingTherapists) ? 'pendingSection' : 'verifiedSection';
             </li>
         </ul>
 
-        <!-- ══════════════════════════════════════════════════════════════ -->
-        <!-- TAB 1 — PENDING                                               -->
-        <!-- ══════════════════════════════════════════════════════════════ -->
         <div id="pendingSection" class="section-panel d-none">
             <div class="card card-custom mb-4">
                 <div class="card-header bg-white py-3 border-bottom">
@@ -257,9 +249,7 @@ $defaultTab = count($pendingTherapists) ? 'pendingSection' : 'verifiedSection';
             </div>
         </div>
 
-        <!-- ══════════════════════════════════════════════════════════════ -->
-        <!-- TAB 2 — VERIFIED                                              -->
-        <!-- ══════════════════════════════════════════════════════════════ -->
+
         <div id="verifiedSection" class="section-panel d-none">
             <div class="card card-custom mb-4">
                 <div class="card-header bg-white py-3 border-bottom">
@@ -310,9 +300,7 @@ $defaultTab = count($pendingTherapists) ? 'pendingSection' : 'verifiedSection';
             </div>
         </div>
 
-        <!-- ══════════════════════════════════════════════════════════════ -->
-        <!-- TAB 3 — EXPIRING SOON                                         -->
-        <!-- ══════════════════════════════════════════════════════════════ -->
+
         <div id="expiringSection" class="section-panel d-none">
             <div class="card card-custom mb-4">
                 <div class="card-header bg-white py-3 border-bottom">
@@ -376,9 +364,7 @@ $defaultTab = count($pendingTherapists) ? 'pendingSection' : 'verifiedSection';
             </div>
         </div>
 
-        <!-- ══════════════════════════════════════════════════════════════ -->
-        <!-- TAB 4 — EXPIRED                                               -->
-        <!-- ══════════════════════════════════════════════════════════════ -->
+
         <div id="expiredSection" class="section-panel d-none">
             <div class="card card-custom mb-4">
                 <div class="card-header bg-white py-3 border-bottom">
@@ -444,9 +430,7 @@ $defaultTab = count($pendingTherapists) ? 'pendingSection' : 'verifiedSection';
 </div>
 </div>
 
-<!-- ══════════════════════════════════════════════════════════════════════════ -->
-<!-- MODAL — Pending Therapist Details                                         -->
-<!-- ══════════════════════════════════════════════════════════════════════════ -->
+
 <div class="modal fade" id="pendingDetailModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-scrollable">
         <div class="modal-content">
@@ -472,9 +456,7 @@ $defaultTab = count($pendingTherapists) ? 'pendingSection' : 'verifiedSection';
     </div>
 </div>
 
-<!-- ══════════════════════════════════════════════════════════════════════════ -->
-<!-- MODAL — Renew License                                                     -->
-<!-- ══════════════════════════════════════════════════════════════════════════ -->
+
 <div class="modal fade" id="renewModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -512,9 +494,7 @@ $defaultTab = count($pendingTherapists) ? 'pendingSection' : 'verifiedSection';
     </div>
 </div>
 
-<!-- ══════════════════════════════════════════════════════════════════════════ -->
-<!-- MODAL — Confirm Action                                                    -->
-<!-- ══════════════════════════════════════════════════════════════════════════ -->
+
 <div class="modal fade" id="confirmModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-sm">
         <div class="modal-content">
@@ -531,12 +511,10 @@ $defaultTab = count($pendingTherapists) ? 'pendingSection' : 'verifiedSection';
     </div>
 </div>
 
-<!-- Toast Container -->
 <div aria-live="polite" aria-atomic="true" class="position-relative">
     <div id="toastContainer" class="toast-container position-fixed top-0 end-0 p-3"></div>
 </div>
 
-<!-- Bootstrap JS -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <!-- Custom JS -->
 <script src="../../assets/js/main.js"></script>
@@ -544,18 +522,14 @@ $defaultTab = count($pendingTherapists) ? 'pendingSection' : 'verifiedSection';
 <script>
 'use strict';
 
-// ── Config ────────────────────────────────────────────────────────────────────
 const ACTION_URL  = '../../Controllers/therapist-actions.php';
 const DEFAULT_TAB = '<?= $defaultTab ?>';
 
-// ── Bootstrap modal instances ─────────────────────────────────────────────────
 const pendingDetailModal = new bootstrap.Modal(document.getElementById('pendingDetailModal'));
 const renewModal         = new bootstrap.Modal(document.getElementById('renewModal'));
 const confirmModal       = new bootstrap.Modal(document.getElementById('confirmModal'));
 
-// ═════════════════════════════════════════════════════════════════════════════
-// TAB SWITCHING
-// ═════════════════════════════════════════════════════════════════════════════
+
 function activateTab(targetId) {
     document.querySelectorAll('#sectionTabs .nav-link')
             .forEach(l => l.classList.remove('active'));
@@ -575,12 +549,9 @@ document.querySelectorAll('#sectionTabs .nav-link').forEach(link => {
     });
 });
 
-// Open default tab on load
 activateTab(DEFAULT_TAB);
 
-// ═════════════════════════════════════════════════════════════════════════════
-// 1. SHOW PENDING THERAPIST DATA
-// ═════════════════════════════════════════════════════════════════════════════
+
 async function showPendingData(id) {
     document.getElementById('pendingDetailBody').innerHTML = spinnerHtml();
     pendingDetailModal.show();
@@ -648,9 +619,7 @@ async function showPendingData(id) {
     }
 }
 
-// ═════════════════════════════════════════════════════════════════════════════
-// 2. CONFIRM ACTION
-// ═════════════════════════════════════════════════════════════════════════════
+
 const CONFIRM_CFG = {
     approve: {
         title:    'Approve Therapist',
@@ -691,9 +660,7 @@ function confirmAction(action, id, rowType) {
     confirmModal.show();
 }
 
-// ═════════════════════════════════════════════════════════════════════════════
-// 3. EXECUTE ACTION (AJAX → DOM update)
-// ═════════════════════════════════════════════════════════════════════════════
+
 async function executeAction(action, id, rowType) {
     try {
         const res = await postJSON({ action, id });
@@ -710,9 +677,7 @@ async function executeAction(action, id, rowType) {
     }
 }
 
-// ═════════════════════════════════════════════════════════════════════════════
-// 4. RENEW LICENSE
-// ═════════════════════════════════════════════════════════════════════════════
+
 function openRenewModal(therapistId, name) {
     document.getElementById('renewTherapistId').value         = therapistId;
     document.getElementById('renewTherapistName').textContent = name;
@@ -756,9 +721,7 @@ async function submitRenew() {
     }
 }
 
-// ═════════════════════════════════════════════════════════════════════════════
-// HELPERS
-// ═════════════════════════════════════════════════════════════════════════════
+
 
 async function postJSON(params) {
     const res = await fetch(ACTION_URL, { method: 'POST', body: new URLSearchParams(params) });
@@ -766,7 +729,6 @@ async function postJSON(params) {
     return res.json();
 }
 
-// Safely replace a button's listener (clone trick prevents accumulation)
 function wireBtn(id, handler) {
     const btn   = document.getElementById(id);
     const clone = btn.cloneNode(true);

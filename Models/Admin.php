@@ -7,7 +7,6 @@ class Admin extends User {
         parent::__construct();
     }
 
-    // ── Patients ──────────────────────────────────────────────────────────────
 
     public function getTotalPatients() {
         $stmt = $this->conn->prepare("SELECT COUNT(*) AS total FROM users WHERE role = 'Patient'");
@@ -22,8 +21,6 @@ class Admin extends User {
         return $stmt->fetchAll();
     }
 
-    // ── Audit ─────────────────────────────────────────────────────────────────
-
     public function getAuditLogsCount() {
         $stmt = $this->conn->prepare("SELECT COUNT(*) AS total FROM audit_logs");
         $stmt->execute();
@@ -31,7 +28,6 @@ class Admin extends User {
         return $result['total'] ?? 0;
     }
 
-    // ── Therapists (general) ──────────────────────────────────────────────────
 
     public function getAllTherapists() {
         $stmt = $this->conn->prepare("SELECT * FROM users WHERE role = 'Therapist' ORDER BY created_at DESC");
@@ -39,7 +35,6 @@ class Admin extends User {
         return $stmt->fetchAll();
     }
 
-    // ── Pending therapists ────────────────────────────────────────────────────
 
     public function getPendingTherapistsCount(): int {
         $stmt = $this->conn->prepare("SELECT COUNT(*) AS total FROM pending_therapists WHERE status = 'Pending'");
@@ -144,7 +139,6 @@ class Admin extends User {
         return $stmt->rowCount() > 0;
     }
 
-    // ── Active therapists / license management ────────────────────────────────
 
     public function getActiveTherapists(): array {
         $stmt = $this->conn->prepare("
@@ -206,12 +200,7 @@ class Admin extends User {
         }
     }
 
-    // ── Performance ───────────────────────────────────────────────────────────
-
-    /**
-     * All verified therapists for the rankings sidebar.
-     * Returns therapist_id + therapist_name only (cheap list query).
-     */
+ 
     public function getVerifiedTherapistList(): array {
         $stmt = $this->conn->prepare("
             SELECT  t.therapist_id,
@@ -225,9 +214,7 @@ class Admin extends User {
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    /**
-     * Per-therapist avg rating + review count for the rankings list.
-     */
+
     public function getTherapistRankingStat(int $therapist_id): array {
         $stmt = $this->conn->prepare("
             SELECT ROUND(AVG(rating), 1) AS avg_rating,
@@ -239,13 +226,7 @@ class Admin extends User {
         return $stmt->fetch(PDO::FETCH_ASSOC) ?: ['avg_rating' => 0, 'cnt' => 0];
     }
 
-    /**
-     * Full detail for the selected therapist:
-     * name, avg rating, total reviews.
-     * Sessions / no-show kept at 0 until sessions schema is confirmed.
-     *
-     * Returns null if the therapist does not exist or is not verified.
-     */
+    
     public function getTherapistPerformanceDetail(int $therapist_id): ?array {
         // Name
         $stmtName = $this->conn->prepare("
@@ -260,7 +241,6 @@ class Admin extends User {
 
         if (!$nameData) return null;
 
-        // Reviews
         $stmtRev = $this->conn->prepare("
             SELECT COUNT(review_id)      AS total_reviews,
                    ROUND(AVG(rating), 1) AS avg_rating
@@ -280,9 +260,7 @@ class Admin extends User {
         ];
     }
 
-    /**
-     * Rating breakdown (count per star) for the detail panel bar chart.
-     */
+
     public function getTherapistRatingBreakdown(int $therapist_id): array {
         $stmt = $this->conn->prepare("
             SELECT rating, COUNT(*) AS count
@@ -295,9 +273,7 @@ class Admin extends User {
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    /**
-     * Up to 5 most recent written reviews for the detail panel.
-     */
+
     public function getTherapistRecentFeedback(int $therapist_id): array {
         $stmt = $this->conn->prepare("
             SELECT rating, comment, created_at
