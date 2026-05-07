@@ -359,30 +359,34 @@ class TherapistController extends FormController {
             ]);
             
             $userId = $this->db->lastInsertId();
-            
+            $licenseExpiryDate = date('Y-m-d', strtotime('+1 year'));
             // Insert into therapists table
             $therapistStmt = $this->db->prepare(
                 'INSERT INTO therapists 
-                    (therapist_id, specialization, experience_years, availability_schedule,
+                    (therapist_id, specialization, languages , license_expiry_date, experience_years, availability_schedule,
                      credential_file_path, is_verified)
-                 VALUES (?, ?, ?, ?, ?, 1)'
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
             );
             
             $therapistStmt->execute([
                 $userId,
                 $specialization,
+                'English',
+                $licenseExpiryDate,
                 (int)$yearsOfExperience,
                 $availabilitySchedule,
-                $credentialPath
+                $credentialPath,
+                1
             ]);
             
             $this->db->commit();
             return true;
             
-        } catch (Exception $e) {
-            $this->db->rollBack();
-            throw $e;
-        }
+        } catch (PDOException $e) {
+                error_log('[Therapist Register] ' . $e->getMessage());
+                redirectWith('../Views/Auth/therapist-register.php', 'error', 
+                    'Submission failed: ' . $e->getMessage()); // Temporarily show error
+            }
     }
     
     private function insertPendingTherapist($firstName, $lastName, $username, $email, $passwordHash, $nationalID, $phone, $dob, $gender, $city, $specialization, $licenseStatus, $yearsOfExperience, $availabilitySchedule, $credentialPath) {
