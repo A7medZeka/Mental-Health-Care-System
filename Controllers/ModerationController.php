@@ -48,25 +48,15 @@ class ModerationController {
         }
         exit();
     }
-    // التعديل المطلوب في ملف ModerationController.php
     private function updatePostState(string $action) {
         $postId = filter_input(INPUT_POST, 'post_id', FILTER_VALIDATE_INT);
         $note = trim($_POST['note'] ?? '');
-        $modId = $_SESSION['user_id']; // بنجيب ID المودريتور من السيشين
-
         if (!$postId) {
             exit(json_encode(['success' => false, 'error' => 'Missing post ID']));
         }
-
         try {
-
-            $result = $this->moderationService->resolveFlag($postId, $action, $modId, $note);
-
-            if ($result) {
-                echo json_encode(['success' => true, 'status' => $action]);
-            } else {
-                echo json_encode(['success' => false, 'error' => 'Invalid transition or post not found']);
-            }
+            $this->moderationService->updatePostStatus($postId, $action, $note);
+            echo json_encode(['success' => true, 'status' => $action]);
         } catch (Exception $e) {
             echo json_encode(['success' => false, 'error' => $e->getMessage()]);
         }
