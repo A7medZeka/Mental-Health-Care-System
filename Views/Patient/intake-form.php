@@ -1,25 +1,28 @@
 <?php
-require_once __DIR__ . '/../../Core/Validation.php';
-require_once __DIR__ . '/../../Core/Database.php';
-session_start();
-$method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
+require_once __DIR__ . '/../../Controllers/PatientDashboardController.php';
+
+// Handle AJAX POST (submit_intake) — respond as JSON then exit
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'submit_intake') {
+    $ctrl = new PatientDashboardController();
+    $ctrl->handleRequest(); // boots session/auth + runs handlePost() which calls handleSubmitIntake()
+    exit();
+}
+
+// Normal GET — validate session
+if (session_status() === PHP_SESSION_NONE) session_start();
 if (empty($_SESSION['user_id'])) {
     header('Location: ../Auth/login.php');
     exit();
 }
-checkMethod($method);
 if ($_SESSION['role'] !== 'Patient') {
     $map = [
         'Admin'     => '../Admin/dashboard.php',
         'Moderator' => '../Moderator/dashboard.php',
         'Therapist' => '../Therapist/dashboard.php',
-        ];
-        header('Location: ' . ($map[$_SESSION['role']] ?? '../Auth/login.php'));
-        exit();
-        }
-$email = $_SESSION['email'] ?? '';
-
-
+    ];
+    header('Location: ' . ($map[$_SESSION['role']] ?? '../Auth/login.php'));
+    exit();
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -438,83 +441,83 @@ $email = $_SESSION['email'] ?? '';
             document.getElementById('progressBar').style.width = (answered / TOTAL_QUESTIONS * 100) + '%';
         }
 
-        document.getElementById('intakeForm').addEventListener('submit', function(e) {
+        document.getElementById('intakeForm').addEventListener('submit', async function(e) {
             e.preventDefault();
 
-            // Check all questions are answered
+            // Validate: all answered
             let allAnswered = true;
             for (let i = 1; i <= TOTAL_QUESTIONS; i++) {
                 const row = document.querySelector('[data-q="q' + i + '"]');
                 if (!document.querySelector('input[name="q' + i + '"]:checked')) {
-                    row.classList.add('unanswered');
-                    allAnswered = false;
+                    row.classList.add('unanswered'); allAnswered = false;
                 } else {
                     row.classList.remove('unanswered');
                 }
             }
             if (!allAnswered) {
-                showToast('Please answer all questions before submitting.', 'error');
-                document.querySelector('.unanswered').scrollIntoView({ behavior: 'smooth', block: 'center' });
+                showToast('Please answer all questions before submitting.', 'danger');
+                document.querySelector('.unanswered').scrollIntoView({ behavior:'smooth', block:'center' });
                 return;
             }
 
-            // Gather scores per dimension
-            // Symptoms: q1-q5, Daily Functioning: q6-q10, History/Trauma: q11-q15, Safety/Crisis: q16-q20
-            function getDimensionAvg(start, end) {
-                let sum = 0;
-                for (let i = start; i <= end; i++) {
-                    sum += parseInt(document.querySelector('input[name="q' + i + '"]:checked').value);
-                }
-                return sum / (end - start + 1);
+            // Collect all answers
+            const responses = {};
+            for (let i = 1; i <= TOTAL_QUESTIONS; i++) {
+                responses['q'+i] = parseInt(document.querySelector('input[name="q'+i+'"]:checked').value);
             }
 
-            const symptomsAvg = getDimensionAvg(1, 5);       // Weight: 30%
-            const functioningAvg = getDimensionAvg(6, 10);    // Weight: 20%
-            const historyAvg = getDimensionAvg(11, 15);       // Weight: 20%
-            const safetyAvg = getDimensionAvg(16, 20);        // Weight: 30%
+            // Dimension averages
+            const avg = (s, e) => { let sum = 0; for(let i=s;i<=e;i++) sum+=responses['q'+i]; return sum/(e-s+1); };
+            const symptomsAvg   = avg(1,5);
+            const functioningAvg = avg(6,10);
+            const historyAvg    = avg(11,15);
+            const safetyAvg     = avg(16,20);
 
-            // Normalize averages to 0-1 scale (from 1-5 scale): (avg - 1) / 4
-            const normalizedSymptoms = (symptomsAvg - 1) / 4;
-            const normalizedFunctioning = (functioningAvg - 1) / 4;
-            const normalizedHistory = (historyAvg - 1) / 4;
-            const normalizedSafety = (safetyAvg - 1) / 4;
-
-            // Total_Score = Sum(Dimension_Average × Weight × 100)
-            let totalScore = (normalizedSymptoms * 0.30 + normalizedFunctioning * 0.20 + normalizedHistory * 0.20 + normalizedSafety * 0.30) * 100;
+            const norm = v => (v-1)/4;
+            let totalScore = (norm(symptomsAvg)*0.30 + norm(functioningAvg)*0.20 + norm(historyAvg)*0.20 + norm(safetyAvg)*0.30)*100;
             totalScore = Math.round(totalScore);
 
-            // Override rule: if any safety question (q16-q20) >= 4 (mapped from 1-5 scale; 4 = "Often", 5 = "Always" which maps to >7 on 1-10 scale)
             let crisisOverride = false;
-            for (let i = 16; i <= 20; i++) {
-                const val = parseInt(document.querySelector('input[name="q' + i + '"]:checked').value);
-                if (val >= 4) { crisisOverride = true; break; }
+            for (let i=16; i<=20; i++) { if(responses['q'+i] >= 4) { crisisOverride=true; break; } }
+
+            let level = crisisOverride ? 'Crisis'
+                      : totalScore <= 25 ? 'Low'
+                      : totalScore <= 60 ? 'Moderate'
+                      : totalScore <= 85 ? 'High' : 'Crisis';
+
+            // Disable submit while saving
+            const btn = this.querySelector('button[type="submit"]');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Saving...';
+
+            try {
+                const form = new FormData();
+                form.append('action',      'submit_intake');
+                form.append('total_score', totalScore);
+                form.append('level',       level);
+                form.append('responses',   JSON.stringify(responses));
+
+                const data = await fetch('intake-form.php', { method:'POST', body:form }).then(r => r.json());
+
+                // Show result modal regardless (server confirms)
+                document.getElementById('totalScore').textContent = totalScore;
+                const levelEl = document.getElementById('levelOfCare');
+                levelEl.textContent = level;
+                levelEl.style.color = level === 'Crisis' ? '#dc3545'
+                                    : level === 'High'   ? '#fd7e14'
+                                    : level === 'Moderate'? '#ffc107' : '#2F8F7E';
+
+                if (!data.success) {
+                    showToast('Warning: score saved locally but server reported: ' + (data.message || 'unknown error'), 'warning');
+                } else {
+                    new bootstrap.Modal(document.getElementById('resultModal')).show();
+                }
+            } catch (err) {
+                showToast('Network error — please try again.', 'danger');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-check-circle me-1"></i> Submit Assessment';
             }
-
-            // Determine level of care
-            let level;
-            if (crisisOverride) {
-                level = 'Crisis';
-            } else if (totalScore <= 25) {
-                level = 'Low';
-            } else if (totalScore <= 60) {
-                level = 'Moderate';
-            } else if (totalScore <= 85) {
-                level = 'High';
-            } else {
-                level = 'Crisis';
-            }
-
-            // Show result modal
-            document.getElementById('totalScore').textContent = totalScore;
-            const levelEl = document.getElementById('levelOfCare');
-            levelEl.textContent = level;
-            if (level === 'Crisis') levelEl.style.color = '#dc3545';
-            else if (level === 'High') levelEl.style.color = '#fd7e14';
-            else if (level === 'Moderate') levelEl.style.color = '#ffc107';
-            else levelEl.style.color = '#2F8F7E';
-
-            var modal = new bootstrap.Modal(document.getElementById('resultModal'));
-            modal.show();
         });
     </script>
 </body>

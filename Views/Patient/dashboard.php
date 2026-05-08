@@ -1,17 +1,35 @@
 <?php
 require_once __DIR__ . '/../../Controllers/PatientDashboardController.php';
 
-$controller = new PatientDashboardController();
-$dashboardData = $controller->handleRequest();
-$recentActivity = $controller->getRecentActivity();
-$onboardingChecklist = $controller->getOnboardingChecklist();
+$controller          = new PatientDashboardController();
+$dashboardData       = $controller->handleRequest();
 
-$first_name = $dashboardData['first_name'];
-$last_name = $dashboardData['last_name'];
-$email = $dashboardData['email'];
-$age = $dashboardData['age'];
-$gender = $dashboardData['gender'];
-$role = $_SESSION['role']?? 'Patient';
+// ── View data from controller data providers ──────────────────────────────
+$first_name          = $dashboardData['first_name'];
+$last_name           = $dashboardData['last_name'];
+$email               = $dashboardData['email'];
+$age                 = $dashboardData['age'];
+$gender              = $dashboardData['gender'];
+$role                = $_SESSION['role'] ?? 'Patient';
+$patientId           = (int)$_SESSION['user_id'];
+
+$recentActivity      = $controller->getRecentActivity();
+$onboardingChecklist = $controller->getOnboardingChecklist();
+$myTherapist         = $controller->getMyTherapist();
+$upcomingAppts       = $controller->getUpcomingAppointments();
+$pastAppts           = $controller->getPastAppointments();
+$availTherapists     = $controller->getAvailableTherapists();
+$moodHistory         = $controller->getMoodHistory(7);
+$todayMood           = $controller->getTodayMood();
+$goals               = $controller->getGoals();
+$journalEntries      = $controller->getJournalEntries(10);
+$payments            = $controller->getPayments();
+$insurance           = $controller->getInsurance();
+$consents            = $controller->getConsents();
+$resources           = $controller->getResources();
+$notifications       = $controller->getNotifications();
+$unreadNotifs        = $controller->getUnreadNotifCount();
+$intakeStatus        = $controller->getIntakeStatus();
 ?>
 
 <!DOCTYPE html>
@@ -75,7 +93,18 @@ $role = $_SESSION['role']?? 'Patient';
             </div>
             <div class="col-md-6 col-lg-3">
               <div class="card card-custom h-100"><div class="card-body d-flex justify-content-between align-items-center">
-                <div><h6 class="text-secondary-custom mb-2">Today's Mood</h6><h3 class="fw-bold text-primary-custom mb-0">😊 <?php echo $dashboardData['today_mood']; ?></h3></div>
+                <div><h6 class="text-secondary-custom mb-2">Today's Mood</h6><h3 class="fw-bold text-primary-custom mb-0"><?php
+                  $moodScore = $dashboardData['today_mood_score'] ?? 0;
+                  echo match(true) {
+                      $moodScore >= 5 => '😄',
+                      $moodScore >= 4 => '😊',
+                      $moodScore >= 3 => '😐',
+                      $moodScore >= 2 => '😟',
+                      $moodScore >= 1 => '😢',
+                      default         => '—'
+                  };
+                  echo ' ' . htmlspecialchars($dashboardData['today_mood'] ?: 'Not logged');
+                ?></h3></div>
                 <div class="bg-light-green p-3 rounded-circle text-primary-custom"><i class="bi bi-emoji-smile fs-4"></i></div>
               </div></div>
             </div>
@@ -133,11 +162,14 @@ $role = $_SESSION['role']?? 'Patient';
                 <div class="card-header bg-white border-0 pt-4 pb-0"><h5 class="fw-bold text-primary-custom mb-0">Recent Activity</h5></div>
                 <div class="card-body">
                   <ul class="list-group list-group-flush">
-                    <li class="list-group-item d-flex justify-content-between"><span><i class="bi bi-camera-video text-primary-custom me-2"></i>Session completed with Dr. Hassan</span><small class="text-secondary-custom">Apr 28, 2026</small></li>
-                    <li class="list-group-item d-flex justify-content-between"><span><i class="bi bi-heart-pulse text-primary-custom me-2"></i>Mood logged: Anxious</span><small class="text-secondary-custom">Apr 27, 2026</small></li>
-                    <li class="list-group-item d-flex justify-content-between"><span><i class="bi bi-bullseye text-primary-custom me-2"></i>Wellness goal updated: Meditation</span><small class="text-secondary-custom">Apr 26, 2026</small></li>
-                    <li class="list-group-item d-flex justify-content-between"><span><i class="bi bi-journal-richtext text-primary-custom me-2"></i>Journal entry added</span><small class="text-secondary-custom">Apr 25, 2026</small></li>
-                    <li class="list-group-item d-flex justify-content-between"><span><i class="bi bi-calendar-event text-primary-custom me-2"></i>Appointment booked for May 5</span><small class="text-secondary-custom">Apr 24, 2026</small></li>
+                    <?php if (empty($recentActivity)): ?>
+                      <li class="list-group-item text-secondary-custom">No recent activity yet.</li>
+                    <?php else: foreach ($recentActivity as $act): ?>
+                      <li class="list-group-item d-flex justify-content-between">
+                        <span><i class="bi bi-<?= htmlspecialchars($act['icon']) ?> text-primary-custom me-2"></i><?= htmlspecialchars($act['text']) ?></span>
+                        <small class="text-secondary-custom"><?= htmlspecialchars($act['date']) ?></small>
+                      </li>
+                    <?php endforeach; endif; ?>
                   </ul>
                 </div>
               </div>
@@ -149,39 +181,37 @@ $role = $_SESSION['role']?? 'Patient';
         <div id="section-onboarding" style="display:none;">
           <div class="d-flex justify-content-between align-items-center mb-4">
             <h2 class="fw-bold text-primary-custom mb-0">Onboarding Checklist</h2>
-            <span class="text-secondary-custom"><i class="bi bi-person-circle me-1"></i> Patient: Sarah Johnson</span>
+            <span class="text-secondary-custom"><i class="bi bi-person-circle me-1"></i> <?= htmlspecialchars($first_name . ' ' . $last_name) ?></span>
           </div>
           <div class="row"><div class="col-12">
             <div class="card card-custom">
               <div class="card-header bg-white border-0 pt-4 pb-0"><h5 class="fw-bold text-primary-custom mb-0">Your Onboarding Checklist</h5></div>
               <div class="card-body">
-                <div class="d-flex justify-content-between mb-2"><span class="text-secondary-custom">Overall Progress</span><span class="fw-bold text-primary-custom">60%</span></div>
-                <div class="progress mb-4" style="height:10px;"><div class="progress-bar bg-success" style="width:60%"></div></div>
+                <?php
+                  $completedCount  = count(array_filter($onboardingChecklist, fn($i) => $i[2] === 'Completed'));
+                  $progressPct     = (int)$dashboardData['onboarding_progress'];
+                  $statusColors    = ['Completed'=>'success','Pending'=>'warning','Locked'=>'secondary'];
+                ?>
+                <div class="d-flex justify-content-between mb-2"><span class="text-secondary-custom">Overall Progress</span><span class="fw-bold text-primary-custom"><?= $progressPct ?>%</span></div>
+                <div class="progress mb-4" style="height:10px;"><div class="progress-bar bg-success" style="width:<?= $progressPct ?>%"></div></div>
                 <ul class="list-group list-group-flush">
+                  <?php foreach ($onboardingChecklist as $i => [$title, $desc, $status]):
+                    $color = $statusColors[$status] ?? 'secondary';
+                  ?>
                   <li class="list-group-item d-flex align-items-center justify-content-between py-3">
-                    <div class="d-flex align-items-center"><div class="bg-light-green text-primary-custom rounded-circle d-flex align-items-center justify-content-center me-3 fw-bold" style="width:40px;height:40px;">1</div><div><div class="fw-bold">Create Profile</div><small class="text-secondary-custom">Complete your personal information</small></div></div>
-                    <span class="badge bg-success">Completed</span>
+                    <div class="d-flex align-items-center">
+                      <div class="bg-light-green text-primary-custom rounded-circle d-flex align-items-center justify-content-center me-3 fw-bold" style="width:40px;height:40px;"><?= $i + 1 ?></div>
+                      <div><div class="fw-bold"><?= htmlspecialchars($title) ?></div><small class="text-secondary-custom"><?= htmlspecialchars($desc) ?></small></div>
+                    </div>
+                    <?php if ($status === 'Pending' && $title === 'Submit Intake Form'): ?>
+                      <div><span class="badge bg-warning text-dark me-2">Pending</span><button type="button" class="btn btn-sm btn-primary-custom" onclick="window.open('intake-form.php','_blank')">Start Now</button></div>
+                    <?php elseif ($status === 'Pending' && $title === 'Add Payment Method'): ?>
+                      <div><span class="badge bg-warning text-dark me-2">Pending</span><button type="button" class="btn btn-sm btn-primary-custom" data-bs-toggle="modal" data-bs-target="#paymentModal">Add Now</button></div>
+                    <?php else: ?>
+                      <span class="badge bg-<?= $color ?>"><?= htmlspecialchars($status) ?></span>
+                    <?php endif; ?>
                   </li>
-                  <li class="list-group-item d-flex align-items-center justify-content-between py-3">
-                    <div class="d-flex align-items-center"><div class="bg-light-green text-primary-custom rounded-circle d-flex align-items-center justify-content-center me-3 fw-bold" style="width:40px;height:40px;">2</div><div><div class="fw-bold">Submit Intake Form</div><small class="text-secondary-custom">Answer clinical assessment questions</small></div></div>
-                    <div><span class="badge bg-warning text-dark me-2">Pending</span><button type="button" class="btn btn-sm btn-primary-custom" onclick="window.open('intake-form.php', '_blank')">Start Now</button></div>
-                  </li>
-                  <li class="list-group-item d-flex align-items-center justify-content-between py-3">
-                    <div class="d-flex align-items-center"><div class="bg-light-green text-primary-custom rounded-circle d-flex align-items-center justify-content-center me-3 fw-bold" style="width:40px;height:40px;">3</div><div><div class="fw-bold">Verify Insurance</div><small class="text-secondary-custom">Add your insurance provider details</small></div></div>
-                    <span class="badge bg-success">Completed</span>
-                  </li>
-                  <li class="list-group-item d-flex align-items-center justify-content-between py-3">
-                    <div class="d-flex align-items-center"><div class="bg-light-green text-primary-custom rounded-circle d-flex align-items-center justify-content-center me-3 fw-bold" style="width:40px;height:40px;">4</div><div><div class="fw-bold">Sign Legal Consents</div><small class="text-secondary-custom">Review and sign required documents</small></div></div>
-                    <span class="badge bg-success">Completed</span>
-                  </li>
-                  <li class="list-group-item d-flex align-items-center justify-content-between py-3">
-                    <div class="d-flex align-items-center"><div class="bg-light-green text-primary-custom rounded-circle d-flex align-items-center justify-content-center me-3 fw-bold" style="width:40px;height:40px;">5</div><div><div class="fw-bold">Add Payment Method</div><small class="text-secondary-custom">Set up billing for sessions</small></div></div>
-                    <div><span class="badge bg-warning text-dark me-2">Pending</span><button type="button" class="btn btn-sm btn-primary-custom" data-bs-toggle="modal" data-bs-target="#paymentModal">Add Now</button></div>
-                  </li>
-                  <li class="list-group-item d-flex align-items-center justify-content-between py-3">
-                    <div class="d-flex align-items-center"><div class="bg-light-green text-primary-custom rounded-circle d-flex align-items-center justify-content-center me-3 fw-bold" style="width:40px;height:40px;">6</div><div><div class="fw-bold">Receive Therapist Match</div><small class="text-secondary-custom">Awaiting intake form completion</small></div></div>
-                    <span class="badge bg-secondary">Locked</span>
-                  </li>
+                  <?php endforeach; ?>
                 </ul>
               </div>
             </div>
@@ -192,7 +222,7 @@ $role = $_SESSION['role']?? 'Patient';
         <div id="section-therapist" style="display:none;">
           <div class="d-flex justify-content-between align-items-center mb-4">
             <h2 class="fw-bold text-primary-custom mb-0">My Therapist</h2>
-            <span class="text-secondary-custom"><i class="bi bi-person-circle me-1"></i> Patient: Sarah Johnson</span>
+            <span class="text-secondary-custom"><i class="bi bi-person-circle me-1"></i> <?= htmlspecialchars($first_name . ' ' . $last_name) ?></span>
           </div>
           <div class="row g-4">
             <div class="col-lg-7">
@@ -200,19 +230,30 @@ $role = $_SESSION['role']?? 'Patient';
                 <div class="card-header bg-white border-0 pt-4 pb-0"><h5 class="fw-bold text-primary-custom mb-0">My Therapist</h5></div>
                 <div class="card-body text-center">
                   <div class="bg-light-green rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width:100px;height:100px;"><i class="bi bi-person-fill text-primary-custom" style="font-size:3rem;"></i></div>
-                  <h4 class="fw-bold text-primary-custom mb-1">Dr. Amira Hassan</h4>
-                  <p class="text-secondary-custom mb-3">Cognitive Behavioral Therapy</p>
-                  <ul class="list-unstyled text-start mx-auto" style="max-width:380px;">
-                    <li class="mb-2"><i class="bi bi-translate text-primary-custom me-2"></i> Languages: Arabic, English</li>
-                    <li class="mb-2"><i class="bi bi-gender-female text-primary-custom me-2"></i> Gender: Female</li>
-                    <li class="mb-2"><i class="bi bi-star-fill text-accent me-2"></i> Rating: 4.2 / 5</li>
-                    <li class="mb-2"><i class="bi bi-shield-check text-success me-2"></i> Status: Active &amp; Verified</li>
-                  </ul>
+                  <?php if ($myTherapist): ?>
+                    <h4 class="fw-bold text-primary-custom mb-1">Dr. <?= htmlspecialchars($myTherapist['first_name'] . ' ' . $myTherapist['last_name']) ?></h4>
+                    <p class="text-secondary-custom mb-3"><?= htmlspecialchars($myTherapist['specialization'] ?? 'General Therapy') ?></p>
+                    <ul class="list-unstyled text-start mx-auto" style="max-width:380px;">
+                      <li class="mb-2"><i class="bi bi-translate text-primary-custom me-2"></i> Languages: <?= htmlspecialchars($myTherapist['languages'] ?? 'N/A') ?></li>
+                      <li class="mb-2"><i class="bi bi-star-fill text-accent me-2"></i> Rating: <?= number_format((float)($myTherapist['rating'] ?? 0), 1) ?> / 5</li>
+                      <li class="mb-2"><i class="bi bi-briefcase text-primary-custom me-2"></i> Experience: <?= (int)($myTherapist['experience_years'] ?? 0) ?> yrs</li>
+                      <li class="mb-2"><i class="bi bi-shield-check text-success me-2"></i> <?= $myTherapist['is_verified'] ? 'Active & Verified' : 'Pending Verification' ?></li>
+                    </ul>
+                  <?php else: ?>
+                    <h5 class="text-secondary-custom mt-3">No therapist assigned yet.</h5>
+                    <p class="text-muted small">Complete your intake form to receive a therapist match.</p>
+                  <?php endif; ?>
+                  <?php if ($myTherapist): ?>
                   <div class="d-flex gap-2 mt-3">
                     <button type="button" class="btn btn-primary-custom w-50" data-bs-toggle="modal" data-bs-target="#messageTherapistModal"><i class="bi bi-envelope me-1"></i> Send Message</button>
                     <button type="button" class="btn btn-outline-secondary w-50" data-bs-toggle="modal" data-bs-target="#rematchModal"><i class="bi bi-arrow-repeat me-1"></i> Request Re-Match</button>
                   </div>
                   <p class="text-secondary-custom small mt-3 mb-0"><i class="bi bi-shield-lock me-1"></i> Direct contact details are never shared. All communication is platform-only.</p>
+                  <?php else: ?>
+                  <div class="mt-3">
+                    <button type="button" class="btn btn-primary-custom" onclick="window.open('intake-form.php','_blank')"><i class="bi bi-clipboard-check me-1"></i> Complete Intake Form to Get Matched</button>
+                  </div>
+                  <?php endif; ?>
                 </div>
               </div>
             </div>
@@ -220,10 +261,31 @@ $role = $_SESSION['role']?? 'Patient';
               <div class="card card-custom">
                 <div class="card-header bg-white border-0 pt-4 pb-0"><h5 class="fw-bold text-primary-custom mb-0">My Matching Preferences</h5></div>
                 <div class="card-body">
-                  <div class="mb-3"><label class="form-label">Preferred Language</label><select class="form-select"><option selected>Arabic</option><option>English</option><option>French</option><option>Other</option></select></div>
-                  <div class="mb-3"><label class="form-label">Preferred Therapist Gender</label><select class="form-select"><option>No Preference</option><option selected>Female</option><option>Male</option></select></div>
-                  <div class="mb-3"><label class="form-label">Cultural / Religious Background</label><select class="form-select"><option selected>No Preference</option><option>Muslim</option><option>Christian</option><option>Other</option></select></div>
-                  <div class="mb-3"><label class="form-label">Specialization Needed</label><select class="form-select"><option selected>CBT</option><option>Anxiety</option><option>Depression</option><option>Trauma</option><option>Other</option></select></div>
+                  <?php $profile = $controller->getProfileData(); ?>
+                  <div class="mb-3"><label class="form-label">Preferred Language</label>
+                    <select name="prefLang" class="form-select">
+                      <?php foreach (['Arabic','English','French','Other'] as $opt): ?>
+                        <option <?= ($profile['pref_language'] ?? '') === $opt ? 'selected' : '' ?>><?= $opt ?></option>
+                      <?php endforeach; ?>
+                    </select></div>
+                  <div class="mb-3"><label class="form-label">Preferred Therapist Gender</label>
+                    <select name="prefGender" class="form-select">
+                      <?php foreach (['No Preference','Male','Female'] as $opt): ?>
+                        <option <?= ($profile['pref_therapist_gender'] ?? '') === $opt ? 'selected' : '' ?>><?= $opt ?></option>
+                      <?php endforeach; ?>
+                    </select></div>
+                  <div class="mb-3"><label class="form-label">Cultural / Religious Background</label>
+                    <select name="prefCulture" class="form-select">
+                      <?php foreach (['No Preference','Muslim','Christian','Other'] as $opt): ?>
+                        <option <?= ($profile['pref_cultural_background'] ?? '') === $opt ? 'selected' : '' ?>><?= $opt ?></option>
+                      <?php endforeach; ?>
+                    </select></div>
+                  <div class="mb-3"><label class="form-label">Specialization Needed</label>
+                    <select name="prefSpecialization" class="form-select">
+                      <?php foreach (['CBT','Anxiety','Depression','Trauma','other'] as $opt): ?>
+                        <option <?= ($profile['pref_specialization'] ?? '') === $opt ? 'selected' : '' ?>><?= $opt ?></option>
+                      <?php endforeach; ?>
+                    </select></div>
                   <button type="button" class="btn btn-primary-custom w-100" onclick="savePreferences()">Save Preferences</button>
                   <p class="text-secondary-custom small mt-3 mb-0">These preferences are used when matching or re-matching you with a therapist.</p>
                 </div>
@@ -236,7 +298,7 @@ $role = $_SESSION['role']?? 'Patient';
         <div id="section-appointments" style="display:none;">
           <div class="d-flex justify-content-between align-items-center mb-4">
             <h2 class="fw-bold text-primary-custom mb-0">Appointments</h2>
-            <span class="text-secondary-custom"><i class="bi bi-person-circle me-1"></i> Patient: Sarah Johnson</span>
+            <span class="text-secondary-custom"><i class="bi bi-person-circle me-1"></i> <?= htmlspecialchars($first_name . ' ' . $last_name) ?></span>
           </div>
           <div class="row"><div class="col-12">
             <div class="card card-custom">
@@ -254,9 +316,23 @@ $role = $_SESSION['role']?? 'Patient';
                     <table class="table table-hover table-custom">
                       <thead><tr><th>Date &amp; Time</th><th>Therapist</th><th>Type</th><th>Status</th><th>Actions</th></tr></thead>
                       <tbody>
-                        <tr><td>May 5, 2026 · 3:00 PM</td><td>Dr. Hassan</td><td>Video</td><td><span class="badge bg-primary">Scheduled</span></td><td><button type="button" class="btn btn-sm btn-outline-secondary" disabled>Join Session</button> <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#cancelAppointmentModal">Cancel</button></td></tr>
-                        <tr><td>May 12, 2026 · 11:00 AM</td><td>Dr. Hassan</td><td>Video</td><td><span class="badge bg-primary">Scheduled</span></td><td><button type="button" class="btn btn-sm btn-outline-secondary" disabled>Join Session</button> <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#cancelAppointmentModal">Cancel</button></td></tr>
-                        <tr><td>May 19, 2026 · 2:00 PM</td><td>Dr. Hassan</td><td>In-Person</td><td><span class="badge bg-primary">Scheduled</span></td><td><button type="button" class="btn btn-sm btn-outline-secondary" disabled>Join Session</button> <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#cancelAppointmentModal">Cancel</button></td></tr>
+                        <?php if (empty($upcomingAppts)): ?>
+                          <tr><td colspan="5" class="text-center text-muted py-3">No upcoming appointments.</td></tr>
+                        <?php else: foreach ($upcomingAppts as $a):
+                          $apptColors = ['Scheduled'=>'primary','Confirmed'=>'success','Cancelled'=>'danger'];
+                          $apptColor  = $apptColors[$a['status']] ?? 'secondary';
+                        ?>
+                          <tr data-appt-id="<?= $a['appointment_id'] ?>">
+                            <td><?= date('M j, Y · g:i A', strtotime($a['appointment_date'])) ?></td>
+                            <td>Dr. <?= htmlspecialchars($a['first_name'] . ' ' . $a['last_name']) ?></td>
+                            <td><?= htmlspecialchars($a['session_type']) ?></td>
+                            <td><span class="badge bg-<?= $apptColor ?>"><?= htmlspecialchars($a['status']) ?></span></td>
+                            <td>
+                              <button type="button" class="btn btn-sm btn-outline-secondary" disabled>Join Session</button>
+                              <button type="button" class="btn btn-sm btn-outline-danger" onclick="cancelAppointment(<?= $a['appointment_id'] ?>)">Cancel</button>
+                            </td>
+                          </tr>
+                        <?php endforeach; endif; ?>
                       </tbody>
                     </table>
                   </div>
@@ -264,9 +340,20 @@ $role = $_SESSION['role']?? 'Patient';
                     <table class="table table-hover table-custom">
                       <thead><tr><th>Date &amp; Time</th><th>Therapist</th><th>Type</th><th>Status</th><th>Actions</th></tr></thead>
                       <tbody>
-                        <tr><td>Apr 28, 2026 · 3:00 PM</td><td>Dr. Hassan</td><td>Video</td><td><span class="badge bg-success">Completed</span></td><td><button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#sessionSummaryModal">View Summary</button></td></tr>
-                        <tr><td>Apr 21, 2026 · 3:00 PM</td><td>Dr. Hassan</td><td>Video</td><td><span class="badge bg-success">Completed</span></td><td><button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#sessionSummaryModal">View Summary</button></td></tr>
-                        <tr><td>Apr 10, 2026 · 11:00 AM</td><td>Dr. Hassan</td><td>Video</td><td><span class="badge bg-danger">No-Show</span></td><td><button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#sessionSummaryModal">View Summary</button></td></tr>
+                        <?php if (empty($pastAppts)): ?>
+                          <tr><td colspan="5" class="text-center text-muted py-3">No past appointments.</td></tr>
+                        <?php else: foreach ($pastAppts as $a):
+                          $pastColors = ['Completed'=>'success','No-Show'=>'danger','Cancelled'=>'secondary'];
+                          $pastColor  = $pastColors[$a['status']] ?? 'secondary';
+                        ?>
+                          <tr>
+                            <td><?= date('M j, Y · g:i A', strtotime($a['appointment_date'])) ?></td>
+                            <td>Dr. <?= htmlspecialchars($a['first_name'] . ' ' . $a['last_name']) ?></td>
+                            <td><?= htmlspecialchars($a['session_type']) ?></td>
+                            <td><span class="badge bg-<?= $pastColor ?>"><?= htmlspecialchars($a['status']) ?></span></td>
+                            <td><button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#sessionSummaryModal">View Summary</button></td>
+                          </tr>
+                        <?php endforeach; endif; ?>
                       </tbody>
                     </table>
                   </div>
@@ -280,7 +367,7 @@ $role = $_SESSION['role']?? 'Patient';
         <div id="section-sessions" style="display:none;">
           <div class="d-flex justify-content-between align-items-center mb-4">
             <h2 class="fw-bold text-primary-custom mb-0">Sessions</h2>
-            <span class="text-secondary-custom"><i class="bi bi-person-circle me-1"></i> Patient: Sarah Johnson</span>
+            <span class="text-secondary-custom"><i class="bi bi-person-circle me-1"></i> <?= htmlspecialchars($first_name . ' ' . $last_name) ?></span>
           </div>
           <div class="row"><div class="col-12">
             <div class="card card-custom">
@@ -289,7 +376,19 @@ $role = $_SESSION['role']?? 'Patient';
                 <span id="sessionBadge" class="badge bg-secondary ms-auto">Scheduled</span>
               </div>
               <div class="card-body">
-                <div class="alert alert-info"><i class="bi bi-info-circle me-2"></i><strong>Next Session:</strong> May 5, 2026 at 3:00 PM with Dr. Hassan</div>
+                <?php
+                  $nextSession = !empty($upcomingAppts) ? $upcomingAppts[0] : null;
+                  $nextTherapistName = $nextSession ? 'Dr. ' . htmlspecialchars($nextSession['first_name'] . ' ' . $nextSession['last_name']) : 'No upcoming session';
+                  $nextSessionTime  = $nextSession ? date('M j, Y \a\t g:i A', strtotime($nextSession['appointment_date'])) : '';
+                ?>
+                <div class="alert alert-<?= $nextSession ? 'info' : 'secondary' ?>">
+                  <i class="bi bi-info-circle me-2"></i>
+                  <?php if ($nextSession): ?>
+                    <strong>Next Session:</strong> <?= $nextSessionTime ?> with <?= $nextTherapistName ?>
+                  <?php else: ?>
+                    <strong>No upcoming sessions.</strong> Book an appointment to get started.
+                  <?php endif; ?>
+                </div>
 
                 <div id="statePreSession">
                   <div class="text-center py-5">
@@ -303,7 +402,7 @@ $role = $_SESSION['role']?? 'Patient';
                   <div class="alert alert-warning"><i class="bi bi-hourglass-split me-2"></i> You are in the virtual waiting room. Your therapist will admit you shortly.</div>
                   <div class="text-center py-5">
                     <div class="spinner-border text-primary-custom mb-3" role="status" style="width:3rem;height:3rem;"></div>
-                    <h5>Waiting for Dr. Hassan to admit you...</h5>
+                    <h5>Waiting for <?= $nextTherapistName ?? 'your therapist' ?> to admit you...</h5>
                     <button type="button" class="btn btn-outline-danger mt-3" onclick="leaveWaitingRoom()">Leave Waiting Room</button>
                   </div>
                 </div>
@@ -324,7 +423,7 @@ $role = $_SESSION['role']?? 'Patient';
         <div id="section-mood" style="display:none;">
           <div class="d-flex justify-content-between align-items-center mb-4">
             <h2 class="fw-bold text-primary-custom mb-0">Mood Tracker</h2>
-            <span class="text-secondary-custom"><i class="bi bi-person-circle me-1"></i> Patient: Sarah Johnson</span>
+            <span class="text-secondary-custom"><i class="bi bi-person-circle me-1"></i> <?= htmlspecialchars($first_name . ' ' . $last_name) ?></span>
           </div>
           <div class="row g-4">
             <div class="col-lg-5">
@@ -351,19 +450,42 @@ $role = $_SESSION['role']?? 'Patient';
                   <select class="form-select form-select-sm ms-auto" style="width:auto;"><option>Last 7 days</option><option>Last 14 days</option><option>Last 30 days</option></select>
                 </div>
                 <div class="card-body">
+                  <?php
+                    $moodColorMap = [1=>'danger',2=>'warning',3=>'warning',4=>'success',5=>'success'];
+                    $moodEmoji    = [1=>'😢',2=>'😟',3=>'😐',4=>'😊',5=>'😄'];
+                    $moodAvg      = !empty($moodHistory) ? round(array_sum(array_column($moodHistory,'mood_score')) / count($moodHistory), 1) : null;
+                  ?>
                   <table class="table table-custom">
                     <thead><tr><th>Day</th><th>Mood</th><th>Score</th><th>Trend</th></tr></thead>
                     <tbody>
-                      <tr><td>Mon</td><td>Good</td><td>4</td><td><div class="progress" style="height:8px;"><div class="progress-bar bg-success" style="width:80%"></div></div></td></tr>
-                      <tr><td>Tue</td><td>Anxious</td><td>2</td><td><div class="progress" style="height:8px;"><div class="progress-bar bg-danger" style="width:40%"></div></div></td></tr>
-                      <tr><td>Wed</td><td>Neutral</td><td>3</td><td><div class="progress" style="height:8px;"><div class="progress-bar bg-warning" style="width:60%"></div></div></td></tr>
-                      <tr><td>Thu</td><td>Good</td><td>4</td><td><div class="progress" style="height:8px;"><div class="progress-bar bg-success" style="width:80%"></div></div></td></tr>
-                      <tr><td>Fri</td><td>Excellent</td><td>5</td><td><div class="progress" style="height:8px;"><div class="progress-bar bg-success" style="width:100%"></div></div></td></tr>
-                      <tr><td>Sat</td><td>Low</td><td>2</td><td><div class="progress" style="height:8px;"><div class="progress-bar bg-danger" style="width:40%"></div></div></td></tr>
-                      <tr><td>Sun</td><td>Good</td><td>4</td><td><div class="progress" style="height:8px;"><div class="progress-bar bg-success" style="width:80%"></div></div></td></tr>
+                      <?php if (empty($moodHistory)): ?>
+                        <tr><td colspan="4" class="text-center text-muted py-3">No mood entries this week. Log your first mood!</td></tr>
+                      <?php else: foreach ($moodHistory as $m):
+                        $score    = (int)$m['mood_score'];
+                        $barColor = $moodColorMap[$score] ?? 'secondary';
+                        $barWidth = ($score / 5) * 100;
+                        $emoji    = $moodEmoji[$score] ?? '😐';
+                        $dayLabel = date('D, M j', strtotime($m['entry_date']));
+                      ?>
+                        <tr>
+                          <td><?= $dayLabel ?></td>
+                          <td><?= $emoji ?> <?= htmlspecialchars($m['mood_label'] ?? ucfirst($m['mood_score'])) ?></td>
+                          <td><strong><?= $score ?></strong>/5</td>
+                          <td>
+                            <div class="progress" style="height:8px;">
+                              <div class="progress-bar bg-<?= $barColor ?>" style="width:<?= $barWidth ?>%"></div>
+                            </div>
+                          </td>
+                        </tr>
+                      <?php endforeach; endif; ?>
                     </tbody>
                   </table>
-                  <p class="text-center text-secondary-custom mb-0 mt-3">Weekly average: <span class="fw-bold text-primary-custom">3.4 / 5</span></p>
+                  <p class="text-center text-secondary-custom mb-0 mt-3">
+                    Weekly average:
+                    <span class="fw-bold text-primary-custom">
+                      <?= $moodAvg !== null ? $moodAvg . ' / 5' : 'No data yet' ?>
+                    </span>
+                  </p>
                 </div>
               </div>
             </div>
@@ -374,7 +496,7 @@ $role = $_SESSION['role']?? 'Patient';
         <div id="section-goals" style="display:none;">
           <div class="d-flex justify-content-between align-items-center mb-4">
             <h2 class="fw-bold text-primary-custom mb-0">Wellness Goals</h2>
-            <span class="text-secondary-custom"><i class="bi bi-person-circle me-1"></i> Patient: Sarah Johnson</span>
+            <span class="text-secondary-custom"><i class="bi bi-person-circle me-1"></i> <?= htmlspecialchars($first_name . ' ' . $last_name) ?></span>
           </div>
           <div class="row g-4">
             <div class="col-lg-5">
@@ -382,8 +504,8 @@ $role = $_SESSION['role']?? 'Patient';
                 <div class="card-header bg-white border-0 pt-4 pb-0"><h5 class="fw-bold text-primary-custom mb-0">Add New Goal</h5></div>
                 <div class="card-body">
                   <div class="mb-3"><label class="form-label">Goal Title</label><input id="goalTitle" type="text" class="form-control" placeholder="e.g. Daily walk" name="goalTitle"></div>
-                  <div class="mb-3"><label class="form-label">Target (days per week)</label><input type="number" class="form-control" min="1" max="7" value="5"></div>
-                  <div class="mb-3"><label class="form-label">Category</label><select class="form-select"><option>Mindfulness</option><option>Exercise</option><option>Sleep</option><option>Journaling</option><option>Medication</option><option>Other</option></select></div>
+                  <div class="mb-3"><label class="form-label">Target (days per week)</label><input id="goalTargetDays" type="number" class="form-control" min="1" max="7" value="5" name="goalTargetDays"></div>
+                  <div class="mb-3"><label class="form-label">Category</label><select id="goalCategory" class="form-select" name="goalCategory"><option value="Mindfulness">Mindfulness</option><option value="Exercise">Exercise</option><option value="Sleep">Sleep</option><option value="Journaling">Journaling</option><option value="Medication">Medication</option><option value="Other">Other</option></select></div>
                   <button type="button" class="btn btn-primary-custom w-100" onclick="saveGoal()">Save Goal</button>
                 </div>
               </div>
@@ -393,18 +515,28 @@ $role = $_SESSION['role']?? 'Patient';
                 <div class="card-header bg-white border-0 pt-4 pb-0"><h5 class="fw-bold text-primary-custom mb-0">My Goals</h5></div>
                 <div class="card-body">
                   <ul class="list-group list-group-flush">
-                    <li class="list-group-item d-flex align-items-center justify-content-between py-3">
-                      <div class="d-flex align-items-center"><div class="bg-light-green text-primary-custom rounded-circle d-flex align-items-center justify-content-center me-3" style="width:48px;height:48px;"><i class="bi bi-lungs fs-4"></i></div><div><div class="fw-bold">Daily Meditation</div><small class="text-secondary-custom">Mindfulness</small></div></div>
-                      <div class="d-flex align-items-center gap-3"><span class="text-success fw-bold">80%</span><div class="progress" style="width:120px;height:8px;"><div class="progress-bar bg-success" style="width:80%"></div></div><button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#updateGoalModal">Update</button></div>
-                    </li>
-                    <li class="list-group-item d-flex align-items-center justify-content-between py-3">
-                      <div class="d-flex align-items-center"><div class="bg-light-green text-primary-custom rounded-circle d-flex align-items-center justify-content-center me-3" style="width:48px;height:48px;"><i class="bi bi-bicycle fs-4"></i></div><div><div class="fw-bold">Morning Walk</div><small class="text-secondary-custom">Exercise</small></div></div>
-                      <div class="d-flex align-items-center gap-3"><span class="text-warning fw-bold">60%</span><div class="progress" style="width:120px;height:8px;"><div class="progress-bar bg-warning" style="width:60%"></div></div><button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#updateGoalModal">Update</button></div>
-                    </li>
-                    <li class="list-group-item d-flex align-items-center justify-content-between py-3">
-                      <div class="d-flex align-items-center"><div class="bg-light-green text-primary-custom rounded-circle d-flex align-items-center justify-content-center me-3" style="width:48px;height:48px;"><i class="bi bi-moon fs-4"></i></div><div><div class="fw-bold">Sleep by 11 PM</div><small class="text-secondary-custom">Sleep</small></div></div>
-                      <div class="d-flex align-items-center gap-3"><span class="text-danger fw-bold">40%</span><div class="progress" style="width:120px;height:8px;"><div class="progress-bar bg-danger" style="width:40%"></div></div><button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#updateGoalModal">Update</button></div>
-                    </li>
+                    <?php if (empty($goals)): ?>
+                      <li class="list-group-item text-center text-muted py-4">No goals yet. Add your first goal!</li>
+                    <?php else:
+                      $goalIcons    = ['Mindfulness'=>'lungs','Exercise'=>'bicycle','Sleep'=>'moon','Nutrition'=>'apple','Other'=>'bullseye'];
+                      $goalColors   = ['Achieved'=>'success','In-Progress'=>'warning','Failed'=>'danger'];
+                    foreach ($goals as $g):
+                      $pct   = min(100, (int)$g['progress']);
+                      $gColor = $pct >= 100 ? 'success' : ($pct >= 50 ? 'warning' : 'danger');
+                      $icon   = $goalIcons[$g['category']] ?? 'bullseye';
+                    ?>
+                      <li class="list-group-item d-flex align-items-center justify-content-between py-3">
+                        <div class="d-flex align-items-center">
+                          <div class="bg-light-green text-primary-custom rounded-circle d-flex align-items-center justify-content-center me-3" style="width:48px;height:48px;"><i class="bi bi-<?= $icon ?> fs-4"></i></div>
+                          <div><div class="fw-bold"><?= htmlspecialchars($g['title']) ?></div><small class="text-secondary-custom"><?= htmlspecialchars($g['category']) ?></small></div>
+                        </div>
+                        <div class="d-flex align-items-center gap-3">
+                          <span class="text-<?= $gColor ?> fw-bold"><?= $pct ?>%</span>
+                          <div class="progress" style="width:120px;height:8px;"><div class="progress-bar bg-<?= $gColor ?>" style="width:<?= $pct ?>%"></div></div>
+                          <button type="button" class="btn btn-sm btn-outline-secondary" onclick="openGoalModal(<?= $g['goal_id'] ?>, <?= $pct ?>)">Update</button>
+                        </div>
+                      </li>
+                    <?php endforeach; endif; ?>
                   </ul>
                 </div>
               </div>
@@ -416,7 +548,7 @@ $role = $_SESSION['role']?? 'Patient';
         <div id="section-journal" style="display:none;">
           <div class="d-flex justify-content-between align-items-center mb-4">
             <h2 class="fw-bold text-primary-custom mb-0">My Journal</h2>
-            <span class="text-secondary-custom"><i class="bi bi-person-circle me-1"></i> Patient: Sarah Johnson</span>
+            <span class="text-secondary-custom"><i class="bi bi-person-circle me-1"></i> <?= htmlspecialchars($first_name . ' ' . $last_name) ?></span>
           </div>
           <div class="row g-4">
             <div class="col-lg-5">
@@ -442,21 +574,28 @@ $role = $_SESSION['role']?? 'Patient';
               <div class="card card-custom">
                 <div class="card-header bg-white border-0 pt-4 pb-0"><h5 class="fw-bold text-primary-custom mb-0">My Entries</h5></div>
                 <div class="card-body">
-                  <div class="card card-custom mb-3 p-3">
-                    <div class="d-flex justify-content-between align-items-start mb-2"><h6 class="fw-bold mb-0 text-primary-custom">Feeling Better Today</h6><div><small class="text-secondary-custom me-2">Apr 28</small><span class="badge bg-secondary">Private</span></div></div>
-                    <p class="text-secondary-custom small mb-2">Today I woke up feeling lighter than usual. The meditation exercises are starting to...</p>
-                    <div class="d-flex gap-2"><button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#viewJournalModal">Read</button><button type="button" class="btn btn-sm btn-outline-secondary" onclick="togglePrivacy(this)">Change Privacy</button></div>
-                  </div>
-                  <div class="card card-custom mb-3 p-3">
-                    <div class="d-flex justify-content-between align-items-start mb-2"><h6 class="fw-bold mb-0 text-primary-custom">Session Reflection</h6><div><small class="text-secondary-custom me-2">Apr 25</small><span class="badge bg-primary">Shared</span></div></div>
-                    <p class="text-secondary-custom small mb-2">Dr. Hassan suggested I try journaling before bed. It's helping me process my...</p>
-                    <div class="d-flex gap-2"><button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#viewJournalModal">Read</button><button type="button" class="btn btn-sm btn-outline-secondary" onclick="togglePrivacy(this)">Change Privacy</button></div>
-                  </div>
-                  <div class="card card-custom mb-3 p-3">
-                    <div class="d-flex justify-content-between align-items-start mb-2"><h6 class="fw-bold mb-0 text-primary-custom">Hard Day</h6><div><small class="text-secondary-custom me-2">Apr 22</small><span class="badge bg-secondary">Private</span></div></div>
-                    <p class="text-secondary-custom small mb-2">Work was overwhelming today. I felt anxious most of the morning but used the...</p>
-                    <div class="d-flex gap-2"><button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#viewJournalModal">Read</button><button type="button" class="btn btn-sm btn-outline-secondary" onclick="togglePrivacy(this)">Change Privacy</button></div>
-                  </div>
+                  <?php if (empty($journalEntries)): ?>
+                    <p class="text-center text-muted py-4">No journal entries yet.</p>
+                  <?php else: foreach ($journalEntries as $j):
+                    $privColor = $j['privacy_level'] === 'Private' ? 'secondary' : 'primary';
+                    $privLabel = $j['privacy_level'] === 'Private' ? 'Private' : 'Shared';
+                    $snippet   = htmlspecialchars(mb_substr($j['content'] ?? '', 0, 80)) . '...';
+                  ?>
+                    <div class="card card-custom mb-3 p-3">
+                      <div class="d-flex justify-content-between align-items-start mb-2">
+                        <h6 class="fw-bold mb-0 text-primary-custom"><?= htmlspecialchars($j['title']) ?></h6>
+                        <div>
+                          <small class="text-secondary-custom me-2"><?= date('M j', strtotime($j['created_at'])) ?></small>
+                          <span class="badge bg-<?= $privColor ?> privacy-badge"><?= $privLabel ?></span>
+                        </div>
+                      </div>
+                      <p class="text-secondary-custom small mb-2"><?= $snippet ?></p>
+                      <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#viewJournalModal">Read</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="togglePrivacy(this, <?= $j['entry_id'] ?>)">Change Privacy</button>
+                      </div>
+                    </div>
+                  <?php endforeach; endif; ?>
                 </div>
               </div>
             </div>
@@ -467,7 +606,7 @@ $role = $_SESSION['role']?? 'Patient';
         <div id="section-resources" style="display:none;">
           <div class="d-flex justify-content-between align-items-center mb-4">
             <h2 class="fw-bold text-primary-custom mb-0">Wellness Resources</h2>
-            <span class="text-secondary-custom"><i class="bi bi-person-circle me-1"></i> Patient: Sarah Johnson</span>
+            <span class="text-secondary-custom"><i class="bi bi-person-circle me-1"></i> <?= htmlspecialchars($first_name . ' ' . $last_name) ?></span>
           </div>
           <div class="row g-4 mb-4"><div class="col-12">
             <div class="card card-custom">
@@ -477,34 +616,24 @@ $role = $_SESSION['role']?? 'Patient';
               </div>
               <div class="card-body">
                 <div class="row g-3">
-                  <div class="col-md-6 col-lg-3"><div class="card card-custom h-100 p-3 text-center">
-                    <div class="bg-light-green rounded-circle d-inline-flex align-items-center justify-content-center mx-auto mb-3" style="width:60px;height:60px;"><i class="bi bi-lungs text-primary-custom fs-3"></i></div>
-                    <h6 class="fw-bold text-primary-custom">5-Min Breathing</h6>
-                    <span class="badge mb-2" style="background-color:var(--primary-green);">Mindfulness</span>
-                    <p class="small text-secondary-custom">Box breathing for calm</p>
-                    <button type="button" class="btn btn-sm btn-primary-custom" onclick="startMindfulnessTimer(5); showSection('section-resources'); return false;">Start Timer</button>
-                  </div></div>
-                  <div class="col-md-6 col-lg-3"><div class="card card-custom h-100 p-3 text-center">
-                    <div class="bg-light-green rounded-circle d-inline-flex align-items-center justify-content-center mx-auto mb-3" style="width:60px;height:60px;"><i class="bi bi-book text-primary-custom fs-3"></i></div>
-                    <h6 class="fw-bold text-primary-custom">CBT Worksheet</h6>
-                    <span class="badge mb-2" style="background-color:var(--primary-green);">Therapy</span>
-                    <p class="small text-secondary-custom">Challenge negative thoughts</p>
-                    <button type="button" class="btn btn-sm btn-primary-custom" onclick="showToast('Resource opened.', 'success')">Open</button>
-                  </div></div>
-                  <div class="col-md-6 col-lg-3"><div class="card card-custom h-100 p-3 text-center">
-                    <div class="bg-light-green rounded-circle d-inline-flex align-items-center justify-content-center mx-auto mb-3" style="width:60px;height:60px;"><i class="bi bi-music-note-beamed text-primary-custom fs-3"></i></div>
-                    <h6 class="fw-bold text-primary-custom">Calm Sounds</h6>
-                    <span class="badge mb-2" style="background-color:var(--primary-green);">Audio</span>
-                    <p class="small text-secondary-custom">Nature sounds for focus</p>
-                    <button type="button" class="btn btn-sm btn-primary-custom" onclick="showToast('Playing...', 'success')">Play</button>
-                  </div></div>
-                  <div class="col-md-6 col-lg-3"><div class="card card-custom h-100 p-3 text-center">
-                    <div class="bg-light-green rounded-circle d-inline-flex align-items-center justify-content-center mx-auto mb-3" style="width:60px;height:60px;"><i class="bi bi-bicycle text-primary-custom fs-3"></i></div>
-                    <h6 class="fw-bold text-primary-custom">Morning Movement</h6>
-                    <span class="badge mb-2" style="background-color:var(--primary-green);">Exercise</span>
-                    <p class="small text-secondary-custom">10-min wake-up routine</p>
-                    <button type="button" class="btn btn-sm btn-primary-custom" onclick="showToast('Starting exercise guide.', 'success')">Start</button>
-                  </div></div>
+                  <?php if (empty($resources)): ?>
+                    <div class="col-12"><p class="text-center text-muted py-4">No resources available.</p></div>
+                  <?php else:
+                    $resIcons = ['Mindfulness'=>'lungs','Therapy'=>'book','Audio'=>'music-note-beamed','Exercise'=>'bicycle'];
+                    $resActions = ['Timer'=>'startMindfulnessTimer(5)','PDF'=>"showToast('Opening resource...','success')",'Audio'=>"showToast('Playing...','success')",'Video'=>"showToast('Loading video...','success')"];
+                    foreach ($resources as $res):
+                      $icon   = $resIcons[$res['category']] ?? 'star';
+                      $action = $resActions[$res['resource_type']] ?? "showToast('Opening...','success')";
+                      $btnLabel = match($res['resource_type']) { 'Timer'=>'Start Timer', 'PDF'=>'Open', 'Audio'=>'Play', 'Video'=>'Watch', default=>'Open' };
+                  ?>
+                    <div class="col-md-6 col-lg-3"><div class="card card-custom h-100 p-3 text-center">
+                      <div class="bg-light-green rounded-circle d-inline-flex align-items-center justify-content-center mx-auto mb-3" style="width:60px;height:60px;"><i class="bi bi-<?= $icon ?> text-primary-custom fs-3"></i></div>
+                      <h6 class="fw-bold text-primary-custom"><?= htmlspecialchars($res['title']) ?></h6>
+                      <span class="badge mb-2" style="background-color:var(--primary-green);"><?= htmlspecialchars($res['category']) ?></span>
+                      <p class="small text-secondary-custom"><?= htmlspecialchars(mb_substr($res['description'] ?? '', 0, 60)) ?></p>
+                      <button type="button" class="btn btn-sm btn-primary-custom" onclick="<?= $action ?>; useResource(<?= $res['resource_id'] ?>, 5)"><?= $btnLabel ?></button>
+                    </div></div>
+                  <?php endforeach; endif; ?>
                 </div>
               </div>
             </div>
@@ -536,21 +665,27 @@ $role = $_SESSION['role']?? 'Patient';
         <div id="section-payments" style="display:none;">
           <div class="d-flex justify-content-between align-items-center mb-4">
             <h2 class="fw-bold text-primary-custom mb-0">Payments &amp; Insurance</h2>
-            <span class="text-secondary-custom"><i class="bi bi-person-circle me-1"></i> Patient: Sarah Johnson</span>
+            <span class="text-secondary-custom"><i class="bi bi-person-circle me-1"></i> <?= htmlspecialchars($first_name . ' ' . $last_name) ?></span>
           </div>
           <div class="card card-custom mb-4">
             <div class="card-header bg-white border-0 pt-4 pb-0"><h5 class="fw-bold text-primary-custom mb-0">Insurance Information</h5></div>
             <div class="card-body">
               <div class="row g-3">
                 <div class="col-md-6">
-                  <div class="mb-2"><small class="text-secondary-custom">Provider</small><div class="fw-bold">MediCare Egypt</div></div>
-                  <div class="mb-2"><small class="text-secondary-custom">Policy Number</small><div class="fw-bold">MCE-20240512</div></div>
-                  <div class="mb-2"><small class="text-secondary-custom">Eligibility Status</small><div><span class="badge bg-success">Eligible</span></div></div>
+                  <?php if ($insurance): ?>
+                    <div class="mb-2"><small class="text-secondary-custom">Provider</small><div class="fw-bold"><?= htmlspecialchars($insurance['provider_name']) ?></div></div>
+                    <div class="mb-2"><small class="text-secondary-custom">Policy Number</small><div class="fw-bold"><?= htmlspecialchars($insurance['policy_number']) ?></div></div>
+                    <div class="mb-2"><small class="text-secondary-custom">Eligibility Status</small><div><span class="badge bg-success"><?= htmlspecialchars($insurance['eligibility_status']) ?></span></div></div>
+                  <?php else: ?>
+                    <p class="text-muted">No insurance on file. <a href="#" data-bs-toggle="modal" data-bs-target="#updateInsuranceModal">Add now</a>.</p>
+                  <?php endif; ?>
                 </div>
                 <div class="col-md-6">
-                  <div class="mb-2"><small class="text-secondary-custom">Plan Type</small><div class="fw-bold">Individual</div></div>
-                  <div class="mb-2"><small class="text-secondary-custom">Coverage</small><div class="fw-bold">80%</div></div>
-                  <div class="mb-2"><small class="text-secondary-custom">Expiry</small><div class="fw-bold">December 2026</div></div>
+                  <?php if ($insurance): ?>
+                    <div class="mb-2"><small class="text-secondary-custom">Plan Type</small><div class="fw-bold"><?= htmlspecialchars($insurance['plan_type']) ?></div></div>
+                    <div class="mb-2"><small class="text-secondary-custom">Coverage</small><div class="fw-bold"><?= htmlspecialchars($insurance['coverage']) ?></div></div>
+                    <div class="mb-2"><small class="text-secondary-custom">Expiry</small><div class="fw-bold"><?= htmlspecialchars($insurance['expiry_date']) ?></div></div>
+                  <?php endif; ?>
                 </div>
               </div>
             </div>
@@ -562,9 +697,34 @@ $role = $_SESSION['role']?? 'Patient';
               <table class="table table-hover table-custom">
                 <thead><tr><th>Date</th><th>Session</th><th>Amount</th><th>Status</th><th>Action</th></tr></thead>
                 <tbody>
-                  <tr><td>Apr 28, 2026</td><td>Dr. Hassan – Video</td><td>250 EGP</td><td><span class="badge bg-success">Paid</span></td><td><button type="button" class="btn btn-sm btn-outline-secondary" onclick="showToast('Invoice downloaded.', 'success')">Download</button></td></tr>
-                  <tr><td>Apr 21, 2026</td><td>Dr. Hassan – Video</td><td>250 EGP</td><td><span class="badge bg-success">Paid</span></td><td><button type="button" class="btn btn-sm btn-outline-secondary" onclick="showToast('Invoice downloaded.', 'success')">Download</button></td></tr>
-                  <tr><td>Apr 10, 2026</td><td>Dr. Hassan – Video</td><td>250 EGP</td><td><span class="badge bg-danger">Unpaid</span></td><td><button type="button" class="btn btn-sm btn-primary-custom" onclick="showToast('Redirecting to payment gateway...', 'success')">Pay Now</button></td></tr>
+                  <?php if (empty($payments)): ?>
+                    <tr><td colspan="5" class="text-center text-muted py-3">No payment records found.</td></tr>
+                  <?php else: foreach ($payments as $p):
+                    $payColors = ['Paid'=>'success','Unpaid'=>'danger','Refunded'=>'warning'];
+                    $payColor  = $payColors[$p['status']] ?? 'secondary';
+                  ?>
+                    <tr>
+                      <td><?= date('M j, Y', strtotime($p['payment_date'])) ?></td>
+                      <td>
+                        <?php if ($p['therapist_first']): ?>
+                          Dr. <?= htmlspecialchars($p['therapist_first'] . ' ' . $p['therapist_last']) ?>
+                          – <?= htmlspecialchars($p['session_type'] ?? '') ?>
+                        <?php else: ?>
+                          <span class="text-muted">Direct Payment</span>
+                          <?php if ($p['invoice_number']): ?><small class="text-secondary-custom d-block"><?= htmlspecialchars($p['invoice_number']) ?></small><?php endif; ?>
+                        <?php endif; ?>
+                      </td>
+                      <td><?= number_format((float)$p['amount'], 2) ?> EGP</td>
+                      <td><span class="badge bg-<?= $payColor ?>"><?= htmlspecialchars($p['status']) ?></span></td>
+                      <td>
+                        <?php if ($p['status'] === 'Unpaid'): ?>
+                          <button type="button" class="btn btn-sm btn-primary-custom" data-bs-toggle="modal" data-bs-target="#paymentModal">Pay Now</button>
+                        <?php else: ?>
+                          <button type="button" class="btn btn-sm btn-outline-secondary" onclick="showToast('Invoice #<?= htmlspecialchars($p['invoice_number'] ?? '') ?> downloaded.','success')">Download</button>
+                        <?php endif; ?>
+                      </td>
+                    </tr>
+                  <?php endforeach; endif; ?>
                 </tbody>
               </table>
             </div>
@@ -572,11 +732,43 @@ $role = $_SESSION['role']?? 'Patient';
           <div class="card card-custom">
             <div class="card-header bg-white border-0 pt-4 pb-0"><h5 class="fw-bold text-primary-custom mb-0">Submit a Dispute</h5></div>
             <div class="card-body">
-              <div class="mb-3"><label class="form-label">Related Session</label><select class="form-select"><option>Apr 28 session</option><option>Apr 21 session</option><option>Apr 10 session</option></select></div>
-              <div class="mb-3"><label class="form-label">Dispute Reason</label><select class="form-select"><option>Incorrect charge</option><option>Session not received</option><option>Technical issue</option><option>Other</option></select></div>
-              <div class="mb-3"><label class="form-label">Description</label><textarea class="form-control" rows="3" placeholder="Provide details..."></textarea></div>
+              <div class="mb-3"><label class="form-label">Related Session</label>
+                <select id="disputeAppt" class="form-select">
+                  <option value="">-- Select session --</option>
+                  <?php foreach ($payments as $p): ?>
+                  <option value="<?= $p['appointment_id'] ?>"><?= date('M j, Y', strtotime($p['payment_date'])) ?> – Dr. <?= htmlspecialchars($p['therapist_first'] . ' ' . $p['therapist_last']) ?></option>
+                  <?php endforeach; ?>
+                </select>
+              </div>
+              <div class="mb-3"><label class="form-label">Dispute Reason</label><select id="disputeReason" class="form-select"><option value="incorrect charge">Incorrect charge</option><option value="session not received">Session not received</option><option value="Technical issue">Technical issue</option><option value="Other">Other</option></select></div>
+              <div class="mb-3"><label class="form-label">Description</label><textarea id="disputeDesc" class="form-control" rows="3" placeholder="Provide details..."></textarea></div>
               <button type="button" class="btn btn-primary-custom" onclick="submitDispute()">Submit Dispute</button>
-              <div class="alert alert-warning mt-3 mb-0"><i class="bi bi-info-circle me-2"></i><strong>Open Dispute #D-002</strong> · Apr 10 session · Status: Under Review</div>
+              <?php
+                // Show any open disputes from DB
+                $conn = SingletonDatabase::getInstance()->getConnection();
+                $dStmt = $conn->prepare(
+                    "SELECT d.dispute_code, d.status, d.created_at,
+                            a.appointment_date, u.first_name, u.last_name
+                     FROM disputes d
+                     JOIN appointments a ON a.appointment_id = d.appointment_id
+                     JOIN users u ON u.user_id = a.therapist_id
+                     WHERE d.raised_by_id = ? AND d.status = 'Under Review'
+                     ORDER BY d.created_at DESC LIMIT 3"
+                );
+                $dStmt->execute([$patientId]);
+                $openDisputes = $dStmt->fetchAll(PDO::FETCH_ASSOC);
+              ?>
+              <?php foreach ($openDisputes as $d): ?>
+                <div class="alert alert-warning mt-3 mb-0">
+                  <i class="bi bi-info-circle me-2"></i>
+                  <strong>Open Dispute #<?= htmlspecialchars($d['dispute_code']) ?></strong>
+                  &middot; <?= date('M j', strtotime($d['appointment_date'])) ?> session with Dr. <?= htmlspecialchars($d['first_name'] . ' ' . $d['last_name']) ?>
+                  &middot; Status: <?= htmlspecialchars($d['status']) ?>
+                </div>
+              <?php endforeach; ?>
+              <?php if (empty($openDisputes)): ?>
+                <div class="alert alert-success mt-3 mb-0"><i class="bi bi-check-circle me-2"></i>No open disputes.</div>
+              <?php endif; ?>
             </div>
           </div>
         </div>
@@ -585,29 +777,32 @@ $role = $_SESSION['role']?? 'Patient';
         <div id="section-consents" style="display:none;">
           <div class="d-flex justify-content-between align-items-center mb-4">
             <h2 class="fw-bold text-primary-custom mb-0">Legal Consents</h2>
-            <span class="text-secondary-custom"><i class="bi bi-person-circle me-1"></i> Patient: Sarah Johnson</span>
+            <span class="text-secondary-custom"><i class="bi bi-person-circle me-1"></i> <?= htmlspecialchars($first_name . ' ' . $last_name) ?></span>
           </div>
           <div class="row"><div class="col-12">
             <div class="card card-custom">
               <div class="card-header bg-white border-0 pt-4 pb-0"><h5 class="fw-bold text-primary-custom mb-0">Legal Consents &amp; Agreements</h5></div>
               <div class="card-body">
                 <ul class="list-group list-group-flush">
-                  <li class="list-group-item d-flex align-items-center justify-content-between py-3 border-bottom">
-                    <div><div class="fw-bold">Informed Consent for Therapy</div><small class="text-secondary-custom">Rights and responsibilities in therapy</small></div>
-                    <div><span class="badge bg-success me-2">Signed · Apr 1, 2026</span><button type="button" class="btn btn-sm btn-outline-secondary" onclick="showToast('Document opened.', 'success')">View</button></div>
-                  </li>
-                  <li class="list-group-item d-flex align-items-center justify-content-between py-3 border-bottom">
-                    <div><div class="fw-bold">Privacy Policy (v2.1)</div><small class="text-secondary-custom">How your data is stored and used</small></div>
-                    <div><span class="badge bg-success me-2">Signed · Apr 1, 2026</span><button type="button" class="btn btn-sm btn-outline-secondary" onclick="showToast('Document opened.', 'success')">View</button></div>
-                  </li>
-                  <li class="list-group-item d-flex align-items-center justify-content-between py-3 border-bottom">
-                    <div><div class="fw-bold">Telehealth Agreement</div><small class="text-secondary-custom">Terms for video/online sessions</small></div>
-                    <div><span class="badge bg-success me-2">Signed · Apr 1, 2026</span><button type="button" class="btn btn-sm btn-outline-secondary" onclick="showToast('Document opened.', 'success')">View</button></div>
-                  </li>
-                  <li class="list-group-item d-flex align-items-center justify-content-between py-3">
-                    <div><div class="fw-bold">Updated Terms of Service (v3.0)</div><small class="text-secondary-custom">New platform terms — action required</small></div>
-                    <div><span class="badge bg-warning text-dark me-2">Unsigned</span><button type="button" class="btn btn-sm btn-primary-custom" data-bs-toggle="modal" data-bs-target="#consentSignModal">Review &amp; Sign</button></div>
-                  </li>
+                  <?php if (empty($consents)): ?>
+                    <li class="list-group-item text-center text-muted py-4">No consent records on file.</li>
+                  <?php else: foreach ($consents as $c): ?>
+                    <li class="list-group-item d-flex align-items-center justify-content-between py-3 border-bottom">
+                      <div>
+                        <div class="fw-bold"><?= htmlspecialchars($c['document_name']) ?> (v<?= htmlspecialchars($c['document_version']) ?>)</div>
+                        <small class="text-secondary-custom"><?= $c['signed_date'] ? 'Signed ' . date('M j, Y', strtotime($c['signed_date'])) : 'Not yet signed' ?></small>
+                      </div>
+                      <div>
+                        <?php if ($c['signed_date']): ?>
+                          <span class="badge bg-success me-2">Signed</span>
+                          <button type="button" class="btn btn-sm btn-outline-secondary" onclick="showToast('Document opened.','success')">View</button>
+                        <?php else: ?>
+                          <span class="badge bg-warning text-dark me-2">Unsigned</span>
+                          <button type="button" class="btn btn-sm btn-primary-custom" data-bs-toggle="modal" data-bs-target="#consentSignModal">Review &amp; Sign</button>
+                        <?php endif; ?>
+                      </div>
+                    </li>
+                  <?php endforeach; endif; ?>
                 </ul>
               </div>
             </div>
@@ -716,9 +911,11 @@ $role = $_SESSION['role']?? 'Patient';
   <div class="modal fade" id="updateInsuranceModal" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content">
     <div class="modal-header"><h5 class="modal-title">Update Insurance Information</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
     <div class="modal-body">
-      <div class="mb-3"><label class="form-label">Provider</label><input type="text" class="form-control" value="MediCare Egypt"></div>
-      <div class="mb-3"><label class="form-label">Policy Number</label><input type="text" class="form-control" value="MCE-20240512"></div>
-      <div class="mb-3"><label class="form-label">Member ID</label><input type="text" class="form-control"></div>
+      <div class="mb-3"><label class="form-label">Provider</label><input id="insProvider" type="text" class="form-control" value="<?= htmlspecialchars($insurance['provider_name'] ?? '') ?>"></div>
+      <div class="mb-3"><label class="form-label">Policy Number</label><input id="insPolicyNum" type="text" class="form-control" value="<?= htmlspecialchars($insurance['policy_number'] ?? '') ?>"></div>
+      <div class="mb-3"><label class="form-label">Plan Type</label><input id="insPlanType" type="text" class="form-control" value="<?= htmlspecialchars($insurance['plan_type'] ?? '') ?>"></div>
+      <div class="mb-3"><label class="form-label">Coverage %</label><input id="insCoverage" type="text" class="form-control" value="<?= htmlspecialchars($insurance['coverage'] ?? '') ?>"></div>
+      <div class="mb-3"><label class="form-label">Expiry Date</label><input id="insExpiry" type="text" class="form-control" value="<?= htmlspecialchars($insurance['expiry_date'] ?? '') ?>"></div>
     </div>
     <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button><button type="button" id="btnSaveInsurance" class="btn btn-primary-custom">Save</button></div>
   </div></div></div>
@@ -738,16 +935,18 @@ $role = $_SESSION['role']?? 'Patient';
   </div></div></div>
 
   <div class="modal fade" id="paymentModal" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content">
-    <div class="modal-header"><h5 class="modal-title">Add Payment Method</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+    <div class="modal-header"><h5 class="modal-title"><i class="bi bi-credit-card me-2"></i>Simulate Payment</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
     <div class="modal-body">
-      <div class="mb-3"><label class="form-label">Card Number</label><input type="text" class="form-control" placeholder="1234 5678 9012 3456"></div>
+      <div class="alert alert-info py-2 small mb-3"><i class="bi bi-info-circle me-1"></i>This is a simulation — enter any values. Data will be stored securely.</div>
+      <div class="mb-3"><label class="form-label">Card Number</label><input id="cardNumber" type="text" class="form-control" placeholder="1234 5678 9012 3456" maxlength="19"></div>
       <div class="row g-2 mb-3">
-        <div class="col-6"><label class="form-label">Expiry Date</label><input type="text" class="form-control" placeholder="MM/YY"></div>
-        <div class="col-6"><label class="form-label">CVV</label><input type="text" class="form-control" placeholder="123"></div>
+        <div class="col-6"><label class="form-label">Expiry Date</label><input id="cardExpiry" type="text" class="form-control" placeholder="MM/YY" maxlength="5"></div>
+        <div class="col-6"><label class="form-label">CVV</label><input id="cardCvv" type="text" class="form-control" placeholder="123" maxlength="4"></div>
       </div>
-      <div class="mb-3"><label class="form-label">Cardholder Name</label><input type="text" class="form-control" placeholder="Full name"></div>
+      <div class="mb-3"><label class="form-label">Cardholder Name</label><input id="cardHolder" type="text" class="form-control" placeholder="Full name on card"></div>
+      <div class="mb-3"><label class="form-label">Amount (EGP)</label><input id="cardAmount" type="number" class="form-control" placeholder="e.g. 350" min="1" step="0.01"></div>
     </div>
-    <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button><button type="button" id="btnSaveCard" class="btn btn-primary-custom">Save Card</button></div>
+    <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button><button type="button" id="btnSaveCard" class="btn btn-primary-custom" onclick="saveCard()"><i class="bi bi-lock-fill me-1"></i>Pay Now</button></div>
   </div></div></div>
 
   <!-- Toast container -->

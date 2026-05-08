@@ -1,25 +1,42 @@
 <?php
-require_once __DIR__ . '/../../Core/Validation.php';
-require_once __DIR__ . '/../../Core/Database.php';
-session_start();
-$method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
-if (empty($_SESSION['user_id'])) {
-    header('Location: ../Auth/login.php');
-    exit();
+require_once __DIR__ . '/../../Controllers/PatientDashboardController.php';
+
+$controller = new PatientDashboardController();
+$controller->handleRequest();
+
+// Load recent posts for initial render
+$conn = SingletonDatabase::getInstance()->getConnection();
+$forumPosts = $conn->query(
+    "SELECT post_id, author_pseudonym, category, content, like_count, smile_count, is_flagged, created_at
+     FROM community_posts ORDER BY created_at DESC LIMIT 10"
+)->fetchAll(PDO::FETCH_ASSOC);
+
+// Top posters this week
+$topPosters = $conn->query(
+    "SELECT author_pseudonym, COUNT(*) as post_count
+     FROM community_posts
+     WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+     GROUP BY author_pseudonym ORDER BY post_count DESC LIMIT 3"
+)->fetchAll(PDO::FETCH_ASSOC);
+
+$first_name = htmlspecialchars($_SESSION['first_name'] ?? '');
+$last_name  = htmlspecialchars($_SESSION['last_name']  ?? '');
+
+$categoryColors = [
+    'General support' => 'primary', 'Anxiety &stress' => 'warning',
+    'Depression' => 'info', 'Recovery Journey' => 'success', 'Gratitude' => 'secondary'
+];
+$categoryEmojis = [
+    'General support' => '💬', 'Anxiety &stress' => '😰',
+    'Depression' => '🌧️', 'Recovery Journey' => '🌱', 'Gratitude' => '🙏'
+];
+function timeAgo(string $datetime): string {
+    $diff = time() - strtotime($datetime);
+    if ($diff < 60) return 'Just now';
+    if ($diff < 3600) return (int)($diff/60) . ' min ago';
+    if ($diff < 86400) return (int)($diff/3600) . ' hours ago';
+    return (int)($diff/86400) . ' days ago';
 }
-checkMethod($method);
-if ($_SESSION['role'] !== 'Patient') {
-    $map = [
-        'Admin'     => '../Admin/dashboard.php',
-        'Therapist' => '../Therapist/dashboard.php',
-        'Moderator' => '../Moderator/dashboard.php',
-        ];
-        header('Location: ' . ($map[$_SESSION['role']] ?? '../Auth/login.php'));
-        exit();
-        }
-$email = $_SESSION['email'] ?? '';
-
-
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -205,7 +222,7 @@ $email = $_SESSION['email'] ?? '';
                     <h1 class="h2 text-primary-custom fw-bold"><i class="bi bi-chat-square-heart me-2"></i>Anonymous Community Forum</h1>
                     <p class="text-secondary-custom mb-0">A safe space to share, support, and heal — your real identity is always protected.</p>
                 </div>
-                <span class="text-secondary-custom"><i class="bi bi-person-circle me-1"></i> Patient: Alex</span>
+                <span class="text-secondary-custom"><i class="bi bi-person-circle me-1"></i> <?= $first_name . ' ' . $last_name ?></span>
             </div>
 
             <!-- Crisis Banner (UC-30) -->
@@ -271,73 +288,44 @@ $email = $_SESSION['email'] ?? '';
                         <button class="filter-chip" data-filter="gratitude">Gratitude</button>
                     </div>
 
-                    <!-- Posts Feed -->
-                    <div id="postsFeed">
-
-                        <!-- Sample Post 1 -->
-                        <div class="forum-post-card p-4" data-category="recovery">
+                                  <?php if (empty($forumPosts)): ?>
+                        <div class="text-center py-5 text-muted">
+                          <i class="bi bi-chat-square-heart fs-1 mb-3 d-block"></i>
+                          No posts yet. Be the first to share!
+                        </div>
+                    <?php else: foreach ($forumPosts as $post):
+                        $pseudo   = htmlspecialchars($post['author_pseudonym']);
+                        $initials = strtoupper(substr($pseudo, 0, 1) . (strpos($pseudo, '_') !== false ? substr($pseudo, strpos($pseudo,'_')+1, 1) : ''));
+                        $catColor = $categoryColors[$post['category']] ?? 'secondary';
+                        $catEmoji = $categoryEmojis[$post['category']] ?? '💬';
+                        $ago      = timeAgo($post['created_at']);
+                        $isCrisis = $post['is_flagged'];
+                    ?>
+                        <div class="forum-post-card p-4 <?= $isCrisis ? 'crisis-post' : '' ?>" data-category="<?= htmlspecialchars($post['category']) ?>" data-post-id="<?= $post['post_id'] ?>">
                             <div class="d-flex align-items-start gap-3">
-                                <div class="avatar-anon" style="background:#48B6A2;">WF</div>
+                                <div class="avatar-anon" style="background:var(--primary-green);"><?= $initials ?></div>
                                 <div class="flex-grow-1">
                                     <div class="d-flex align-items-center gap-2 mb-1">
-                                        <strong class="text-primary-custom">WinterFox_8821</strong>
-                                        <span class="badge bg-light text-primary-custom border" style="font-size:.75rem;">🌱 Recovery Journey</span>
-                                        <small class="text-secondary-custom ms-auto">2 hours ago</small>
+                                        <strong class="text-primary-custom"><?= $pseudo ?></strong>
+                                        <span class="badge bg-light text-<?= $catColor ?> border" style="font-size:.75rem;"><?= $catEmoji . ' ' . htmlspecialchars($post['category']) ?></span>
+                                        <small class="text-secondary-custom ms-auto"><?= $ago ?></small>
+                                        <?php if ($isCrisis): ?>
+                                          <span class="badge bg-danger ms-1"><i class="bi bi-exclamation-triangle-fill me-1"></i>Flagged</span>
+                                        <?php endif; ?>
                                     </div>
-                                    <p class="mb-3">Today I completed 30 days of my recovery journey. Some days felt impossible, but I kept going. If you're struggling, please know that every small step counts. 🌱</p>
+                                    <p class="mb-3"><?= nl2br(htmlspecialchars($post['content'])) ?></p>
                                     <div class="d-flex align-items-center gap-2 flex-wrap border-top pt-2">
-                                        <button class="reaction-btn" onclick="reactPost(this,'heart')"><i class="bi bi-heart me-1"></i><span class="react-count">24</span></button>
-                                        <button class="reaction-btn" onclick="reactPost(this,'hug')"><i class="bi bi-emoji-smile me-1"></i><span class="react-count">11</span></button>
+                                        <button class="reaction-btn" onclick="reactPost(this,'heart',<?= $post['post_id'] ?>)"><i class="bi bi-heart me-1"></i><span class="react-count"><?= (int)$post['like_count'] ?></span></button>
+                                        <button class="reaction-btn" onclick="reactPost(this,'hug',<?= $post['post_id'] ?>)"><i class="bi bi-emoji-smile me-1"></i><span class="react-count"><?= (int)$post['smile_count'] ?></span></button>
                                         <button class="reaction-btn reply-btn"><i class="bi bi-chat me-1"></i>Reply</button>
-                                        <button class="reaction-btn ms-auto text-danger flag-btn" onclick="flagPost(this)"><i class="bi bi-flag me-1"></i>Flag</button>
+                                        <button class="reaction-btn ms-auto text-danger flag-btn" onclick="flagPost(this,<?= $post['post_id'] ?>)"><i class="bi bi-flag me-1"></i>Flag</button>
                                     </div>
                                 </div>
                             </div>
                         </div>
+                    <?php endforeach; endif; ?>
 
-                        <!-- Sample Post 2 -->
-                        <div class="forum-post-card p-4" data-category="anxiety">
-                            <div class="d-flex align-items-start gap-3">
-                                <div class="avatar-anon" style="background:#F4B41A;">QM</div>
-                                <div class="flex-grow-1">
-                                    <div class="d-flex align-items-center gap-2 mb-1">
-                                        <strong class="text-primary-custom">QuietMoon_3312</strong>
-                                        <span class="badge bg-light text-warning border" style="font-size:.75rem;">😰 Anxiety & Stress</span>
-                                        <small class="text-secondary-custom ms-auto">5 hours ago</small>
-                                    </div>
-                                    <p class="mb-3">Does anyone else find mornings really difficult? I wake up with this heavy dread feeling and it takes hours to shake off. Wondering if this is something others experience.</p>
-                                    <div class="d-flex align-items-center gap-2 flex-wrap border-top pt-2">
-                                        <button class="reaction-btn" onclick="reactPost(this,'heart')"><i class="bi bi-heart me-1"></i><span class="react-count">18</span></button>
-                                        <button class="reaction-btn" onclick="reactPost(this,'hug')"><i class="bi bi-emoji-smile me-1"></i><span class="react-count">7</span></button>
-                                        <button class="reaction-btn reply-btn"><i class="bi bi-chat me-1"></i>Reply</button>
-                                        <button class="reaction-btn ms-auto text-danger flag-btn" onclick="flagPost(this)"><i class="bi bi-flag me-1"></i>Flag</button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Sample Post 3 - Gratitude -->
-                        <div class="forum-post-card p-4" data-category="gratitude">
-                            <div class="d-flex align-items-start gap-3">
-                                <div class="avatar-anon" style="background:#8F5E2F;">SP</div>
-                                <div class="flex-grow-1">
-                                    <div class="d-flex align-items-center gap-2 mb-1">
-                                        <strong class="text-primary-custom">SilverPine_7740</strong>
-                                        <span class="badge bg-light text-success border" style="font-size:.75rem;">🙏 Gratitude</span>
-                                        <small class="text-secondary-custom ms-auto">Yesterday</small>
-                                    </div>
-                                    <p class="mb-3">Grateful for this platform and all of you. Being able to share without fear of judgment has made therapy so much easier for me. Thank you all 💚</p>
-                                    <div class="d-flex align-items-center gap-2 flex-wrap border-top pt-2">
-                                        <button class="reaction-btn" onclick="reactPost(this,'heart')"><i class="bi bi-heart me-1"></i><span class="react-count">42</span></button>
-                                        <button class="reaction-btn" onclick="reactPost(this,'hug')"><i class="bi bi-emoji-smile me-1"></i><span class="react-count">19</span></button>
-                                        <button class="reaction-btn reply-btn"><i class="bi bi-chat me-1"></i>Reply</button>
-                                        <button class="reaction-btn ms-auto text-danger flag-btn" onclick="flagPost(this)"><i class="bi bi-flag me-1"></i>Flag</button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                    </div><!-- /postsFeed -->
+                    </div><!-- /postsFeed -->                 </div><!-- /postsFeed -->
                 </div>
 
                 <!-- Right Sidebar Widgets -->
@@ -371,21 +359,19 @@ $email = $_SESSION['email'] ?? '';
                     <!-- Active Members -->
                     <div class="sidebar-widget">
                         <h6 class="fw-bold text-primary-custom mb-3"><i class="bi bi-people me-2"></i>Active This Week</h6>
-                        <div class="d-flex align-items-center mb-2">
-                            <div class="avatar-anon me-2" style="background:#48B6A2; width:32px; height:32px; font-size:.8rem;">WF</div>
-                            <span style="font-size:.88rem;">WinterFox_8821</span>
-                            <span class="badge bg-success ms-auto" style="font-size:.7rem;">12 posts</span>
-                        </div>
-                        <div class="d-flex align-items-center mb-2">
-                            <div class="avatar-anon me-2" style="background:#8F5E2F; width:32px; height:32px; font-size:.8rem;">SP</div>
-                            <span style="font-size:.88rem;">SilverPine_7740</span>
-                            <span class="badge bg-success ms-auto" style="font-size:.7rem;">9 posts</span>
-                        </div>
-                        <div class="d-flex align-items-center">
-                            <div class="avatar-anon me-2" style="background:#F4B41A; width:32px; height:32px; font-size:.8rem;">QM</div>
-                            <span style="font-size:.88rem;">QuietMoon_3312</span>
-                            <span class="badge bg-secondary ms-auto" style="font-size:.7rem;">5 posts</span>
-                        </div>
+                        <?php if (empty($topPosters)): ?>
+                          <p class="text-muted small text-center mb-0">No posts this week yet.</p>
+                        <?php else: foreach ($topPosters as $idx => $poster):
+                            $initials = strtoupper(substr($poster['author_pseudonym'],0,2));
+                            $colors   = ['#48B6A2','#8F5E2F','#F4B41A'];
+                            $col      = $colors[$idx] ?? '#2F8F7E';
+                        ?>
+                          <div class="d-flex align-items-center mb-2">
+                            <div class="avatar-anon me-2" style="background:<?= $col ?>; width:32px; height:32px; font-size:.8rem;"><?= $initials ?></div>
+                            <span style="font-size:.88rem;"><?= htmlspecialchars($poster['author_pseudonym']) ?></span>
+                            <span class="badge bg-success ms-auto" style="font-size:.7rem;"><?= (int)$poster['post_count'] ?> posts</span>
+                          </div>
+                        <?php endforeach; endif; ?>
                     </div>
 
                 </div>

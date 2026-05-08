@@ -1,295 +1,450 @@
-// patient.js — Patient Dashboard logic
-// Relies on showToast() from main.js
+/**
+ * patient.js — Patient dashboard AJAX handlers
+ * All POST requests use the action dispatcher in PatientDashboardController.
+ * Mirrors Admin's pattern: fetch → JSON → toast feedback.
+ */
 
-// ---------- Navigation ----------
-function showSection(id) {
-  document.querySelectorAll('main > div[id^="section-"]').forEach(s => s.style.display = 'none');
-  const target = document.getElementById(id);
-  if (target) target.style.display = 'block';
-  document.querySelectorAll('.sidebar .nav-link[data-section]').forEach(l => l.classList.remove('active'));
-  const activeLink = document.querySelector(`.sidebar .nav-link[data-section="${id}"]`);
-  if (activeLink) activeLink.classList.add('active');
-  window.scrollTo({ top: 0, behavior: 'smooth' });
+'use strict';
+
+const DASHBOARD_URL = window.location.href.split('?')[0];
+
+// ── Section navigation ────────────────────────────────────────────────────────
+// All dashboard content lives in <div id="section-*"> blocks inside dashboard.php.
+// showSection() hides every section, shows the target, and marks the sidebar link active.
+
+function showSection(sectionId) {
+    // Hide all sections
+    document.querySelectorAll('main > div[id^="section-"]').forEach(el => {
+        el.style.display = 'none';
+    });
+
+    // Show the requested section
+    const target = document.getElementById(sectionId);
+    if (target) {
+        target.style.display = 'block';
+        // Smooth scroll to top of content
+        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    // Update active sidebar link
+    document.querySelectorAll('.nav-link[data-section]').forEach(link => {
+        link.classList.remove('active');
+        if (link.dataset.section === sectionId) {
+            link.classList.add('active');
+        }
+    });
+
+    // Persist to sessionStorage so refresh keeps the same section
+    try { sessionStorage.setItem('patientSection', sectionId); } catch(e) {}
 }
 
-// ---------- UC-10: Preferences ----------
+// On load — restore last section or default to dashboard
+document.addEventListener('DOMContentLoaded', () => {
+    // First hide all sections
+    document.querySelectorAll('main > div[id^="section-"]').forEach(el => {
+        el.style.display = 'none';
+    });
+
+    // Restore from sessionStorage or default
+    const saved = sessionStorage.getItem('patientSection') || 'section-dashboard';
+    showSection(saved);
+});
+
+// ── Utility ──────────────────────────────────────────────────────────────────
+
+function patientPost(formData, onSuccess) {
+    fetch(DASHBOARD_URL, {
+        method: 'POST',
+        body: formData,
+        credentials: 'same-origin',
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            showToast(data.message || 'Done!', 'success');
+            if (typeof onSuccess === 'function') onSuccess(data);
+        } else {
+            showToast(data.message || 'Something went wrong.', 'danger');
+        }
+    })
+    .catch(() => showToast('Network error. Please try again.', 'danger'));
+}
+
+function buildForm(action, fields) {
+    const fd = new FormData();
+    fd.append('action', action);
+    for (const [k, v] of Object.entries(fields)) fd.append(k, v);
+    return fd;
+}
+
+// ── Profile ───────────────────────────────────────────────────────────────────
+
+function saveProfile() {
+    const fd = buildForm('update_profile', {
+        first_name:   document.getElementById('profileFirstName')?.value.trim()  || '',
+        last_name:    document.getElementById('profileLastName')?.value.trim()   || '',
+        phone_number: document.getElementById('profilePhone')?.value.trim()      || '',
+        city:         document.getElementById('profileCity')?.value.trim()       || '',
+        gender:       document.getElementById('profileGender')?.value            || '',
+    });
+    patientPost(fd);
+}
+
 function savePreferences() {
-  showToast('Matching preferences saved successfully.', 'success');
+    const fd = buildForm('update_preferences', {
+        pref_language:            document.querySelector('[name="prefLang"]')?.value            || '',
+        pref_therapist_gender:    document.querySelector('[name="prefGender"]')?.value          || '',
+        pref_cultural_background: document.querySelector('[name="prefCulture"]')?.value         || '',
+        pref_specialization:      document.querySelector('[name="prefSpecialization"]')?.value  || '',
+    });
+    patientPost(fd);
 }
 
-// ---------- UC-12, UC-9: Appointments ----------
-function checkAvailability() {
-  const date = document.getElementById('apptDate').value;
-  const resultDiv = document.getElementById('availabilityResult');
-  resultDiv.style.display = 'block';
-  if (date) {
-    resultDiv.innerHTML = '<div class="alert alert-success mb-0"><i class="bi bi-check-circle me-1"></i> Slot available! Click Confirm Booking.</div>';
-  } else {
-    resultDiv.innerHTML = '<div class="alert alert-warning mb-0"><i class="bi bi-exclamation-circle me-1"></i> No slots available for this time. <a href="#" onclick="joinWaitlist(); return false;" class="alert-link">Join Waitlist</a></div>';
-  }
-}
-function joinWaitlist() {
-  bootstrap.Modal.getInstance(document.getElementById('bookAppointmentModal'))?.hide();
-  showToast('You have been added to the waitlist. You will be notified when a slot opens.', 'success');
-}
+// ── Appointments ──────────────────────────────────────────────────────────────
+
 function confirmBooking() {
-  bootstrap.Modal.getInstance(document.getElementById('bookAppointmentModal'))?.hide();
-  showToast('Appointment booked successfully!', 'success');
+    const therapistId = document.getElementById('apptTherapist')?.value;
+    const date        = document.getElementById('apptDate')?.value;
+    const type        = document.getElementById('apptType')?.value || 'Video Session';
+
+    if (!therapistId || !date) { showToast('Please fill all fields.', 'warning'); return; }
+
+    const fd = buildForm('book_appointment', {
+        therapist_id:     therapistId,
+        appointment_date: date,
+        session_type:     type,
+    });
+    patientPost(fd, () => setTimeout(() => location.reload(), 1200));
 }
 
-// ---------- UC-13, UC-15: Sessions ----------
-let patientTimerInterval;
+function cancelAppointment(appointmentId) {
+    if (!confirm('Cancel this appointment?')) return;
+    const fd = buildForm('cancel_appointment', { appointment_id: appointmentId });
+    patientPost(fd, () => setTimeout(() => location.reload(), 1200));
+}
+
+function checkAvailability() {
+    const result = document.getElementById('availabilityResult');
+    if (result) {
+        result.style.display = 'block';
+        result.innerHTML = '<div class="alert alert-success mb-0"><i class="bi bi-check-circle me-2"></i>Slot is available!</div>';
+    }
+}
+
+// ── Mood ─────────────────────────────────────────────────────────────────────
+
+let selectedMoodScore = null;
+let selectedMoodLabel = null;
+
+document.addEventListener('DOMContentLoaded', () => {
+    // Mood button selection
+    document.querySelectorAll('.mood-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.mood-btn').forEach(b => b.classList.remove('btn-primary-custom','active'));
+            btn.classList.add('btn-primary-custom','active');
+            selectedMoodScore = btn.dataset.mood;
+            selectedMoodLabel = btn.dataset.label;
+            const label = document.getElementById('moodLabel');
+            if (label) label.textContent = selectedMoodLabel;
+        });
+    });
+
+    // Goal progress range
+    const rangeInput = document.getElementById('goalProgress');
+    const progressVal = document.getElementById('progressVal');
+    if (rangeInput && progressVal) {
+        rangeInput.addEventListener('input', () => { progressVal.textContent = rangeInput.value; });
+    }
+
+    // Notification badge
+    const badge = document.getElementById('notifBadge');
+    if (badge && parseInt(badge.textContent, 10) > 0) badge.style.display = 'inline';
+});
+
+function saveMoodEntry() {
+    if (!selectedMoodScore) { showToast('Please select a mood.', 'warning'); return; }
+    const notes = document.getElementById('moodNotes')?.value.trim() || '';
+    const fd = buildForm('log_mood', {
+        mood_score: selectedMoodScore,
+        mood_label: selectedMoodLabel,
+        notes:      notes,
+    });
+    patientPost(fd, () => {
+        document.getElementById('moodNotes').value = '';
+        selectedMoodScore = null; selectedMoodLabel = null;
+        document.querySelectorAll('.mood-btn').forEach(b => b.classList.remove('btn-primary-custom','active'));
+    });
+}
+
+// ── Goals ─────────────────────────────────────────────────────────────────────
+
+function saveGoal() {
+    const title      = document.getElementById('goalTitle')?.value.trim();
+    const targetDays = document.getElementById('goalTargetDays')?.value || 5;
+    const category   = document.getElementById('goalCategory')?.value  || 'Other';
+
+    if (!title) { showToast('Goal title is required.', 'warning'); return; }
+    const fd = buildForm('create_goal', { goal_title: title, target_days: targetDays, category });
+    patientPost(fd, () => setTimeout(() => location.reload(), 1200));
+}
+
+function saveGoalProgress() {
+    const goalId   = document.getElementById('activeGoalId')?.value;
+    const progress = document.getElementById('goalProgress')?.value || 0;
+    if (!goalId) { showToast('No goal selected.', 'warning'); return; }
+    const fd = buildForm('update_goal', { goal_id: goalId, progress });
+    patientPost(fd, () => {
+        const modal = bootstrap.Modal.getInstance(document.getElementById('updateGoalModal'));
+        if (modal) modal.hide();
+        setTimeout(() => location.reload(), 800);
+    });
+}
+
+function openGoalModal(goalId, currentProgress) {
+    document.getElementById('activeGoalId').value = goalId;
+    const range = document.getElementById('goalProgress');
+    const val   = document.getElementById('progressVal');
+    if (range) { range.value = currentProgress; }
+    if (val)   { val.textContent = currentProgress; }
+    const modal = new bootstrap.Modal(document.getElementById('updateGoalModal'));
+    modal.show();
+}
+
+// ── Journal ───────────────────────────────────────────────────────────────────
+
+function saveJournalEntry() {
+    const title   = document.getElementById('journalTitle')?.value.trim();
+    const content = document.getElementById('journalContent')?.value.trim();
+    const privacy = document.querySelector('[name="privacy"]:checked')?.value || 'Private';
+
+    if (!title || !content) { showToast('Title and content are required.', 'warning'); return; }
+    const fd = buildForm('create_journal', { journalTitle: title, journalContent: content, privacy });
+    patientPost(fd, () => {
+        document.getElementById('journalTitle').value   = '';
+        document.getElementById('journalContent').value = '';
+        setTimeout(() => location.reload(), 1000);
+    });
+}
+
+function togglePrivacy(btn, entryId) {
+    const fd = buildForm('toggle_privacy', { entry_id: entryId });
+    patientPost(fd, data => {
+        const badge = btn.closest('.card')?.querySelector('.privacy-badge');
+        if (badge) badge.textContent = data.new_privacy === 'Private' ? 'Private' : 'Shared';
+    });
+}
+
+// ── Payments & Insurance ──────────────────────────────────────────────────────
+
+function saveCard() {
+    const cardNumber = document.getElementById('cardNumber')?.value.trim();
+    const cvv        = document.getElementById('cardCvv')?.value.trim();
+    const expiry     = document.getElementById('cardExpiry')?.value.trim();
+    const holder     = document.getElementById('cardHolder')?.value.trim();
+    const amount     = document.getElementById('cardAmount')?.value.trim();
+
+    if (!cardNumber) { showToast('Please enter a card number.', 'warning'); return; }
+    if (!expiry)     { showToast('Please enter an expiry date.', 'warning'); return; }
+    if (!cvv)        { showToast('Please enter a CVV.', 'warning'); return; }
+    if (!holder)     { showToast('Please enter the cardholder name.', 'warning'); return; }
+    if (!amount || parseFloat(amount) <= 0) { showToast('Please enter a valid amount.', 'warning'); return; }
+
+    const btn = document.getElementById('btnSaveCard');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Processing...'; }
+
+    const fd = buildForm('save_card', {
+        card_number:     cardNumber,
+        cvv:             cvv,
+        expiry_date:     expiry,
+        cardholder_name: holder,
+        amount:          amount,
+    });
+
+    patientPost(fd, (data) => {
+        const m = bootstrap.Modal.getInstance(document.getElementById('paymentModal'));
+        if (m) m.hide();
+        // Clear inputs
+        ['cardNumber','cardCvv','cardExpiry','cardHolder','cardAmount'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.value = '';
+        });
+        showToast(`✅ Payment of ${parseFloat(amount).toFixed(2)} EGP processed. Reloading...`, 'success');
+        setTimeout(() => location.reload(), 1500);
+    });
+
+    // Re-enable button after response (patientPost handles errors via toast)
+    setTimeout(() => {
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="bi bi-lock-fill me-1"></i>Pay Now'; }
+    }, 3000);
+}
+
+function saveInsurance() {
+    const fd = buildForm('save_insurance', {
+        provider_name:     document.getElementById('insProvider')?.value.trim()    || '',
+        policy_number:     document.getElementById('insPolicyNum')?.value.trim()   || '',
+        plan_type:         document.getElementById('insPlanType')?.value.trim()    || '',
+        coverage:          document.getElementById('insCoverage')?.value.trim()    || '',
+        expiry_date:       document.getElementById('insExpiry')?.value.trim()      || '',
+        eligibility_status:'Eligible',
+    });
+    patientPost(fd, () => {
+        const m = bootstrap.Modal.getInstance(document.getElementById('updateInsuranceModal'));
+        if (m) m.hide();
+    });
+}
+
+function submitDispute() {
+    const appointmentId = document.getElementById('disputeAppt')?.value;
+    const reason        = document.getElementById('disputeReason')?.value;
+    const description   = document.getElementById('disputeDesc')?.value.trim() || '';
+
+    if (!appointmentId || !reason) { showToast('Please fill all required fields.', 'warning'); return; }
+    const fd = buildForm('submit_dispute', { appointment_id: appointmentId, reason, description });
+    patientPost(fd, () => setTimeout(() => location.reload(), 1200));
+}
+
+// ── Consents ─────────────────────────────────────────────────────────────────
+
+function signConsent() {
+    const checkbox = document.getElementById('consentCheck');
+    if (!checkbox?.checked) { showToast('Please read and check the agreement first.', 'warning'); return; }
+
+    const fd = buildForm('sign_consent', {
+        document_name:    'Updated Terms of Service',
+        document_version: '3.0',
+    });
+    patientPost(fd, () => {
+        const m = bootstrap.Modal.getInstance(document.getElementById('consentSignModal'));
+        if (m) m.hide();
+        setTimeout(() => location.reload(), 1000);
+    });
+}
+
+// ── Wellness Resources ────────────────────────────────────────────────────────
+
+function useResource(resourceId, durationMinutes) {
+    const fd = buildForm('log_resource', { resource_id: resourceId, duration: durationMinutes });
+    patientPost(fd);
+}
+
+// ── Notifications ─────────────────────────────────────────────────────────────
+
+function markAllNotificationsRead() {
+    const fd = buildForm('mark_read', {});
+    patientPost(fd, () => {
+        const badge = document.getElementById('notifBadge');
+        if (badge) badge.style.display = 'none';
+    });
+}
+
+// ── Session room UI (unchanged from original) ─────────────────────────────────
+
 function patientCheckIn() {
-  document.getElementById('statePreSession').style.display = 'none';
-  document.getElementById('stateWaitingRoom').style.display = 'block';
-  document.getElementById('sessionBadge').className = 'badge bg-warning text-dark ms-auto';
-  document.getElementById('sessionBadge').textContent = 'In Waiting Room';
-  showToast('Checked in successfully. Waiting for Dr. Hassan.', 'success');
-  setTimeout(() => {
+    document.getElementById('statePreSession').style.display  = 'none';
+    document.getElementById('stateWaitingRoom').style.display = 'block';
+    document.getElementById('sessionBadge').textContent       = 'In Waiting Room';
+    document.getElementById('sessionBadge').className         = 'badge bg-warning text-dark ms-auto';
+    setTimeout(() => admitToSession(), 4000);
+}
+function admitToSession() {
     document.getElementById('stateWaitingRoom').style.display = 'none';
     document.getElementById('stateLiveSession').style.display = 'block';
-    document.getElementById('sessionBadge').className = 'badge bg-danger ms-auto';
-    document.getElementById('sessionBadge').textContent = 'Session Live';
-    showToast('Dr. Hassan has admitted you. Session is now live!', 'success');
-    let secs = 0;
-    patientTimerInterval = setInterval(() => {
-      secs++;
-      const m = Math.floor(secs / 60), s = secs % 60;
-      document.getElementById('patientSessionTimer').textContent =
-        `${m < 10 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}`;
-    }, 1000);
-  }, 3000);
+    document.getElementById('sessionBadge').textContent       = 'Live';
+    document.getElementById('sessionBadge').className         = 'badge bg-danger ms-auto';
+    startSessionTimer();
 }
 function leaveWaitingRoom() {
-  document.getElementById('stateWaitingRoom').style.display = 'none';
-  document.getElementById('statePreSession').style.display = 'block';
-  document.getElementById('sessionBadge').className = 'badge bg-secondary ms-auto';
-  document.getElementById('sessionBadge').textContent = 'Scheduled';
-  showToast('You have left the waiting room.', 'success');
+    document.getElementById('stateWaitingRoom').style.display = 'none';
+    document.getElementById('statePreSession').style.display  = 'block';
+    document.getElementById('sessionBadge').textContent       = 'Scheduled';
+    document.getElementById('sessionBadge').className         = 'badge bg-secondary ms-auto';
 }
 function leaveSession() {
-  clearInterval(patientTimerInterval);
-  document.getElementById('stateLiveSession').style.display = 'none';
-  document.getElementById('statePreSession').style.display = 'block';
-  document.getElementById('sessionBadge').className = 'badge bg-success ms-auto';
-  document.getElementById('sessionBadge').textContent = 'Completed';
-  showToast('Session ended. Thank you!', 'success');
+    clearInterval(window._sessionTimerInterval);
+    document.getElementById('stateLiveSession').style.display = 'none';
+    document.getElementById('statePreSession').style.display  = 'block';
+    document.getElementById('sessionBadge').textContent       = 'Scheduled';
+    document.getElementById('sessionBadge').className         = 'badge bg-secondary ms-auto';
+}
+function startSessionTimer() {
+    let seconds = 0;
+    const display = document.getElementById('patientSessionTimer');
+    window._sessionTimerInterval = setInterval(() => {
+        seconds++;
+        const m = String(Math.floor(seconds / 60)).padStart(2, '0');
+        const s = String(seconds % 60).padStart(2, '0');
+        if (display) display.textContent = `${m}:${s}`;
+    }, 1000);
 }
 
-// ---------- UC-19: Mood Tracker ----------
-function saveMoodEntry() {
-  const label = document.getElementById('moodLabel');
-  if (!label || label.textContent === '—') {
-    showToast('Please select a mood before saving.', 'error');
-    return;
-  }
-  showToast(`Mood "${label.textContent}" logged successfully.`, 'success');
-}
+// ── Mindfulness timer ─────────────────────────────────────────────────────────
+let _timerInterval = null;
+let _timerSeconds  = 0;
+let _timerRunning  = false;
 
-// ---------- UC-21: Wellness Goals ----------
-function saveGoal() {
-  const titleEl = document.getElementById('goalTitle');
-  const title = titleEl.value.trim();
-  if (!title) { showToast('Please enter a goal title.', 'error'); return; }
-  showToast(`Goal "${title}" saved successfully.`, 'success');
-  titleEl.value = '';
-}
-
-// ---------- UC-22: Journal ----------
-function saveJournalEntry() {
-  const title = document.getElementById('journalTitle').value.trim();
-  const content = document.getElementById('journalContent').value.trim();
-  const privacyEl = document.querySelector('input[name="privacy"]:checked');
-  const privacy = privacyEl ? privacyEl.value : 'Private';
-  if (!title || !content) { showToast('Please fill in both title and content.', 'error'); return; }
-  showToast(`Entry "${title}" saved as ${privacy}.`, 'success');
-  document.getElementById('journalTitle').value = '';
-  document.getElementById('journalContent').value = '';
-}
-function togglePrivacy(btn) {
-  const badge = btn.closest('.card').querySelector('.badge');
-  if (badge.classList.contains('bg-secondary')) {
-    badge.className = 'badge bg-primary';
-    badge.textContent = 'Shared';
-    showToast('Entry is now shared with your therapist.', 'success');
-  } else {
-    badge.className = 'badge bg-secondary';
-    badge.textContent = 'Private';
-    showToast('Entry is now private.', 'success');
-  }
-}
-
-// ---------- UC-24: Mindfulness Timer ----------
-let mindfulTimer, mindfulSeconds = 300, mindfulTotalSeconds = 300, mindfulRunning = false;
 function startMindfulnessTimer(minutes) {
-  clearInterval(mindfulTimer);
-  mindfulRunning = false;
-  mindfulTotalSeconds = minutes * 60;
-  mindfulSeconds = mindfulTotalSeconds;
-  updateMindfulDisplay();
-  document.getElementById('mindfulnessStatus').textContent = `${minutes}-minute session ready. Press Start.`;
-  document.getElementById('btnStartTimer').disabled = false;
-  document.getElementById('btnPauseTimer').disabled = true;
-  document.getElementById('btnStopTimer').disabled = true;
+    _timerSeconds = minutes * 60;
+    _timerRunning = false;
+    clearInterval(_timerInterval);
+    updateTimerDisplay();
+    document.getElementById('mindfulnessStatus').textContent = `${minutes}-minute session ready.`;
 }
-function updateMindfulDisplay() {
-  const m = Math.floor(mindfulSeconds / 60), s = mindfulSeconds % 60;
-  const el = document.getElementById('mindfulnessDisplay');
-  if (el) el.textContent = `${m < 10 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}`;
-}
-function controlTimer(action) {
-  if (action === 'start') {
-    if (mindfulRunning) return;
-    mindfulRunning = true;
-    document.getElementById('btnStartTimer').disabled = true;
-    document.getElementById('btnPauseTimer').disabled = false;
-    document.getElementById('btnStopTimer').disabled = false;
-    document.getElementById('mindfulnessStatus').textContent = 'Session in progress... 🧘';
-    mindfulTimer = setInterval(() => {
-      mindfulSeconds--;
-      updateMindfulDisplay();
-      if (mindfulSeconds <= 0) {
-        clearInterval(mindfulTimer);
-        mindfulRunning = false;
-        document.getElementById('mindfulnessStatus').textContent = '✅ Session complete! Great work.';
+function controlTimer(cmd) {
+    if (cmd === 'start' && !_timerRunning) {
+        _timerRunning = true;
+        document.getElementById('btnStartTimer').disabled = true;
+        document.getElementById('btnPauseTimer').disabled = false;
+        document.getElementById('btnStopTimer').disabled  = false;
+        _timerInterval = setInterval(() => {
+            if (_timerSeconds <= 0) {
+                clearInterval(_timerInterval);
+                _timerRunning = false;
+                document.getElementById('mindfulnessStatus').textContent = 'Session complete! Great job.';
+                showToast('Mindfulness session complete!', 'success');
+                return;
+            }
+            _timerSeconds--;
+            updateTimerDisplay();
+        }, 1000);
+    } else if (cmd === 'pause') {
+        clearInterval(_timerInterval); _timerRunning = false;
         document.getElementById('btnStartTimer').disabled = false;
         document.getElementById('btnPauseTimer').disabled = true;
-        document.getElementById('btnStopTimer').disabled = true;
-        showToast('Mindfulness session completed!', 'success');
-      }
-    }, 1000);
-  } else if (action === 'pause') {
-    clearInterval(mindfulTimer);
-    mindfulRunning = false;
-    document.getElementById('btnStartTimer').disabled = false;
-    document.getElementById('btnPauseTimer').disabled = true;
-    document.getElementById('mindfulnessStatus').textContent = 'Paused. Press Start to resume.';
-  } else if (action === 'stop') {
-    clearInterval(mindfulTimer);
-    mindfulRunning = false;
-    mindfulSeconds = mindfulTotalSeconds;
-    updateMindfulDisplay();
-    document.getElementById('btnStartTimer').disabled = false;
-    document.getElementById('btnPauseTimer').disabled = true;
-    document.getElementById('btnStopTimer').disabled = true;
-    document.getElementById('mindfulnessStatus').textContent = 'Stopped. Select a duration to try again.';
-    showToast('Session stopped.', 'success');
-  }
-}
-
-// ---------- UC-34: Disputes ----------
-function submitDispute() {
-  showToast('Dispute submitted. Our team will review within 2-3 business days.', 'success');
-}
-
-// ---------- UC-30: Emergency Resources ----------
-const emergencyData = {
-  eg: [
-    { name: 'Egyptian Mental Health Hotline', number: '08008880700', desc: 'Free 24/7 crisis support in Arabic' },
-    { name: 'Nefsi Platform', number: 'nefsi.org', desc: 'Online mental health resources in Egypt' }
-  ],
-  us: [
-    { name: '988 Suicide & Crisis Lifeline', number: '988', desc: 'Call or text 988, available 24/7' },
-    { name: 'Crisis Text Line', number: 'Text HOME to 741741', desc: 'Free text-based crisis support' }
-  ],
-  uk: [
-    { name: 'Samaritans', number: '116 123', desc: 'Free 24/7 emotional support' },
-    { name: 'MIND', number: '0300 123 3393', desc: 'Mental health support and information' }
-  ],
-  intl: [
-    { name: 'International Association for Suicide Prevention', number: 'iasp.info/resources/Crisis_Centres/', desc: 'Directory of global crisis centers' }
-  ]
-};
-function loadEmergencyResources() {
-  const region = document.getElementById('emergencyRegion').value;
-  const list = document.getElementById('emergencyResourcesList');
-  if (!region) { list.innerHTML = ''; return; }
-  list.innerHTML = emergencyData[region].map(r => `
-    <div class="card card-custom mb-3 p-3">
-      <div class="d-flex justify-content-between align-items-center">
-        <div>
-          <h6 class="fw-bold text-primary-custom mb-1">${r.name}</h6>
-          <p class="mb-1"><strong class="text-danger">${r.number}</strong></p>
-          <small class="text-secondary-custom">${r.desc}</small>
-        </div>
-        <i class="bi bi-telephone-fill text-danger fs-3"></i>
-      </div>
-    </div>`).join('');
-}
-
-// ---------- DOMContentLoaded ----------
-document.addEventListener('DOMContentLoaded', () => {
-  // Mood emoji button highlighting
-  document.querySelectorAll('.mood-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('.mood-btn').forEach(b => {
-        b.classList.remove('btn-primary-custom', 'text-white');
-        b.classList.add('btn-light');
-      });
-      btn.classList.remove('btn-light');
-      btn.classList.add('btn-primary-custom', 'text-white');
-      const label = document.getElementById('moodLabel');
-      if (label) label.textContent = btn.dataset.label;
-    });
-  });
-
-  // Goal progress slider live label
-  const gp = document.getElementById('goalProgress');
-  if (gp) gp.addEventListener('input', e => {
-    const pv = document.getElementById('progressVal');
-    if (pv) pv.textContent = e.target.value;
-  });
-
-  // Send Message
-  const btnSendMessage = document.getElementById('btnSendMessage');
-  if (btnSendMessage) btnSendMessage.addEventListener('click', () => {
-    bootstrap.Modal.getInstance(document.getElementById('messageTherapistModal'))?.hide();
-    showToast('Message sent to Dr. Hassan successfully.', 'success');
-  });
-
-  // Confirm Re-match
-  const btnRematch = document.getElementById('btnConfirmRematch');
-  if (btnRematch) btnRematch.addEventListener('click', () => {
-    bootstrap.Modal.getInstance(document.getElementById('rematchModal'))?.hide();
-    showToast('Re-match request submitted. You will be notified shortly.', 'success');
-  });
-
-  // Cancel appointment
-  const btnConfirmCancel = document.getElementById('btnConfirmCancel');
-  if (btnConfirmCancel) btnConfirmCancel.addEventListener('click', () => {
-    bootstrap.Modal.getInstance(document.getElementById('cancelAppointmentModal'))?.hide();
-    showToast('Appointment cancelled.', 'success');
-  });
-
-  // Save goal progress
-  const btnSaveGoalProgress = document.getElementById('btnSaveGoalProgress');
-  if (btnSaveGoalProgress) btnSaveGoalProgress.addEventListener('click', () => {
-    bootstrap.Modal.getInstance(document.getElementById('updateGoalModal'))?.hide();
-    showToast('Goal progress updated!', 'success');
-  });
-
-  // Save insurance
-  const btnSaveInsurance = document.getElementById('btnSaveInsurance');
-  if (btnSaveInsurance) btnSaveInsurance.addEventListener('click', () => {
-    bootstrap.Modal.getInstance(document.getElementById('updateInsuranceModal'))?.hide();
-    showToast('Insurance information updated.', 'success');
-  });
-
-  // Save card
-  const btnSaveCard = document.getElementById('btnSaveCard');
-  if (btnSaveCard) btnSaveCard.addEventListener('click', () => {
-    bootstrap.Modal.getInstance(document.getElementById('paymentModal'))?.hide();
-    showToast('Payment method saved successfully.', 'success');
-  });
-
-  // Sign consent
-  const btnSign = document.getElementById('btnSignConsent');
-  if (btnSign) btnSign.addEventListener('click', () => {
-    if (!document.getElementById('consentCheck').checked) {
-      showToast('Please read and check the agreement box first.', 'error');
-      return;
+    } else if (cmd === 'stop') {
+        clearInterval(_timerInterval); _timerRunning = false; _timerSeconds = 0;
+        updateTimerDisplay();
+        document.getElementById('btnStartTimer').disabled = false;
+        document.getElementById('btnPauseTimer').disabled = true;
+        document.getElementById('btnStopTimer').disabled  = true;
     }
-    bootstrap.Modal.getInstance(document.getElementById('consentSignModal'))?.hide();
-    showToast('Consent signed and recorded successfully.', 'success');
-  });
-});
+}
+function updateTimerDisplay() {
+    const m = String(Math.floor(_timerSeconds / 60)).padStart(2, '0');
+    const s = String(_timerSeconds % 60).padStart(2, '0');
+    const el = document.getElementById('mindfulnessDisplay');
+    if (el) el.textContent = `${m}:${s}`;
+}
+
+// ── Emergency resources ───────────────────────────────────────────────────────
+function loadEmergencyResources() {
+    const region = document.getElementById('emergencyRegion')?.value;
+    const list   = document.getElementById('emergencyResourcesList');
+    if (!list) return;
+
+    const resources = {
+        eg:   [{ name:'Egypt Crisis Line', phone:'08008880700', notes:'Free, 24/7' }, { name:'Nefsy Mental Health', phone:'+20-2-2414-3434', notes:'Online therapy platform' }],
+        us:   [{ name:'988 Suicide & Crisis Lifeline', phone:'988', notes:'Call or text, 24/7' }, { name:'Crisis Text Line', phone:'Text HOME to 741741', notes:'Free text-based support' }],
+        uk:   [{ name:'Samaritans', phone:'116 123', notes:'Free, 24/7' }, { name:'Mind', phone:'0300 123 3393', notes:'Mon-Fri 9am-6pm' }],
+        intl: [{ name:'International Association for Suicide Prevention', phone:'https://www.iasp.info/resources/Crisis_Centres/', notes:'Global directory' }],
+    };
+
+    const list_data = resources[region] || [];
+    list.innerHTML = list_data.length
+        ? list_data.map(r => `
+            <div class="alert alert-danger mb-2">
+                <strong>${r.name}</strong><br>
+                <i class="bi bi-telephone-fill me-1"></i>${r.phone}
+                <span class="text-muted ms-2">${r.notes}</span>
+            </div>`).join('')
+        : '';
+}

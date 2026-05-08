@@ -97,8 +97,8 @@ function loadResources() {
         </div>`).join('');
 }
 
-/* UC-28: React to post */
-function reactPost(btn, type) {
+/* UC-28: React to post — persists to DB */
+async function reactPost(btn, type, postId) {
     const countEl = btn.querySelector('.react-count');
     if (!countEl) return;
     const wasActive = btn.classList.contains('reacted');
@@ -108,16 +108,31 @@ function reactPost(btn, type) {
         : parseInt(countEl.textContent) + 1;
     if (!wasActive) { btn.style.color = 'var(--primary-green)'; btn.style.background = 'var(--light-green)'; }
     else            { btn.style.color = ''; btn.style.background = ''; }
+
+    if (postId) {
+        const form = new FormData();
+        form.append('action', 'react_post');
+        form.append('post_id', postId);
+        form.append('reaction_type', type);
+        try { await fetch('forum.php', { method:'POST', body:form }); } catch(e) {}
+    }
 }
 
-/* UC-31: Flag a post from patient side */
-function flagPost(btn) {
+/* UC-31: Flag a post — persists to DB */
+async function flagPost(btn, postId) {
     const card = btn.closest('.forum-post-card');
     card.classList.add('flagged-post');
     btn.innerHTML = '<i class="bi bi-flag-fill me-1"></i>Flagged';
     btn.classList.add('text-danger');
     btn.disabled = true;
     showToast('Post reported to moderators. Thank you.', 'success');
+
+    if (postId) {
+        const form = new FormData();
+        form.append('action', 'flag_post');
+        form.append('post_id', postId);
+        try { await fetch('forum.php', { method:'POST', body:form }); } catch(e) {}
+    }
 }
 
 /* Patient Forum — initialise */
@@ -152,8 +167,8 @@ function flagPost(btn) {
         if (alertEl) alertEl.style.display = scanForCrisis(textarea.value) ? 'block' : 'none';
     });
 
-    // Submit post
-    document.getElementById('btnSubmitPost')?.addEventListener('click', () => {
+    // Submit post — saves to DB
+    document.getElementById('btnSubmitPost')?.addEventListener('click', async () => {
         const content  = textarea?.value.trim();
         const category = document.getElementById('postCategory')?.value;
         if (!content) { showToast('Please write something before posting.', 'warning'); return; }
@@ -163,36 +178,72 @@ function flagPost(btn) {
             showToast('⚠️ Crisis keywords detected. Moderators have been alerted.', 'danger');
         }
 
-        const feed = document.getElementById('postsFeed');
+        const submitBtn = document.getElementById('btnSubmitPost');
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Posting...';
+
+        // Category label map for display
         const categoryLabels = {
-            general: '💬 General Support', anxiety: '😰 Anxiety & Stress',
-            depression: '🌧️ Depression', recovery: '🌱 Recovery Journey', gratitude: '🙏 Gratitude'
+            'General support':'💬 General Support','Anxiety &stress':'😰 Anxiety & Stress',
+            'Depression':'🌧️ Depression','Recovery Journey':'🌱 Recovery Journey','Gratitude':'🙏 Gratitude'
         };
-        const card = document.createElement('div');
-        card.className = 'forum-post-card p-4' + (isCrisis ? ' crisis-post' : '');
-        card.dataset.category = category;
-        card.innerHTML = `
-            <div class="d-flex align-items-start gap-3">
-                <div class="avatar-anon" style="background:${color};">${initials}</div>
-                <div class="flex-grow-1">
-                    <div class="d-flex align-items-center gap-2 mb-1">
-                        <strong class="text-primary-custom">${p}</strong>
-                        <span class="badge bg-light text-primary-custom border" style="font-size:.75rem;">${categoryLabels[category]}</span>
-                        <small class="text-secondary-custom ms-auto">Just now</small>
-                        ${isCrisis ? '<span class="badge bg-danger ms-1"><i class="bi bi-exclamation-triangle-fill me-1"></i>Flagged</span>' : ''}
+        // Map JS value → DB ENUM value
+        const catMap = {
+            general:'General support', anxiety:'Anxiety &stress',
+            depression:'Depression', recovery:'Recovery Journey', gratitude:'Gratitude'
+        };
+        const dbCategory = catMap[category] || 'General support';
+
+        try {
+            const form = new FormData();
+            form.append('action',    'post_forum');
+            form.append('content',   content);
+            form.append('category',  dbCategory);
+            form.append('pseudonym', p);
+            form.append('is_crisis', isCrisis ? 1 : 0);
+
+            const data = await fetch('forum.php', { method:'POST', body:form }).then(r => r.json());
+
+            if (!data.success) {
+                showToast('Post failed: ' + (data.message || 'Unknown error'), 'danger');
+                return;
+            }
+
+            // Prepend card to feed
+            const feed  = document.getElementById('postsFeed');
+            const postId = data.post_id;
+            const card  = document.createElement('div');
+            card.className = 'forum-post-card p-4' + (isCrisis ? ' crisis-post' : '');
+            card.dataset.category = dbCategory;
+            card.dataset.postId   = postId;
+            card.innerHTML = `
+                <div class="d-flex align-items-start gap-3">
+                    <div class="avatar-anon" style="background:${color};">${initials}</div>
+                    <div class="flex-grow-1">
+                        <div class="d-flex align-items-center gap-2 mb-1">
+                            <strong class="text-primary-custom">${p}</strong>
+                            <span class="badge bg-light text-primary-custom border" style="font-size:.75rem;">${categoryLabels[dbCategory] || dbCategory}</span>
+                            <small class="text-secondary-custom ms-auto">Just now</small>
+                            ${isCrisis ? '<span class="badge bg-danger ms-1"><i class="bi bi-exclamation-triangle-fill me-1"></i>Flagged</span>' : ''}
+                        </div>
+                        <p class="mb-3">${content.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</p>
+                        <div class="d-flex align-items-center gap-2 flex-wrap border-top pt-2">
+                            <button class="reaction-btn" onclick="reactPost(this,'heart',${postId})"><i class="bi bi-heart me-1"></i><span class="react-count">0</span></button>
+                            <button class="reaction-btn" onclick="reactPost(this,'hug',${postId})"><i class="bi bi-emoji-smile me-1"></i><span class="react-count">0</span></button>
+                            <button class="reaction-btn ms-auto text-danger flag-btn" onclick="flagPost(this,${postId})"><i class="bi bi-flag me-1"></i>Flag</button>
+                        </div>
                     </div>
-                    <p class="mb-3">${content.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</p>
-                    <div class="d-flex align-items-center gap-2 flex-wrap border-top pt-2">
-                        <button class="reaction-btn" onclick="reactPost(this,'heart')"><i class="bi bi-heart me-1"></i><span class="react-count">0</span></button>
-                        <button class="reaction-btn" onclick="reactPost(this,'hug')"><i class="bi bi-emoji-smile me-1"></i><span class="react-count">0</span></button>
-                        <button class="reaction-btn ms-auto text-danger flag-btn" onclick="flagPost(this)"><i class="bi bi-flag me-1"></i>Flag</button>
-                    </div>
-                </div>
-            </div>`;
-        feed.prepend(card);
-        textarea.value = '';
-        if (alertEl) alertEl.style.display = 'none';
-        showToast(isCrisis ? 'Posted — moderators notified due to sensitive content.' : 'Posted anonymously!', isCrisis ? 'warning' : 'success');
+                </div>`;
+            feed.prepend(card);
+            textarea.value = '';
+            if (alertEl) alertEl.style.display = 'none';
+            showToast(isCrisis ? 'Posted — moderators notified due to sensitive content.' : 'Posted anonymously!', isCrisis ? 'warning' : 'success');
+        } catch(err) {
+            showToast('Network error — please try again.', 'danger');
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i class="bi bi-send-fill me-2"></i>Post Anonymously';
+        }
     });
 
     // Filter chips

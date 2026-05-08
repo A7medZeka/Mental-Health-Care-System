@@ -220,18 +220,34 @@ class RegisterController extends FormController {
     }
     
     private function insertPatient($firstName, $lastName, $username, $email, $passwordHash, $nationalID, $phone, $dob, $gender, $city) {
-        $stmt = $this->db->prepare(
-            'INSERT INTO users
-                (first_name, last_name, username, email, password_hash,
-                 national_id, phone_number, date_of_birth, gender, city, role)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
-        );
-        
-        return $stmt->execute([
-            $firstName, $lastName, $username, $email, $passwordHash,
-            $nationalID, ($phone !== '' ? $phone : null),
-            $dob, $gender, $city, 'Patient',
-        ]);
+        $this->db->beginTransaction();
+        try {
+            // 1. Insert into users
+            $stmt = $this->db->prepare(
+                'INSERT INTO users
+                    (first_name, last_name, username, email, password_hash,
+                     national_id, phone_number, date_of_birth, gender, city, role, created_at)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())'
+            );
+            $stmt->execute([
+                $firstName, $lastName, $username, $email, $passwordHash,
+                $nationalID, ($phone !== '' ? $phone : null),
+                $dob, $gender, $city, 'Patient',
+            ]);
+
+            $userId = $this->db->lastInsertId();
+
+            // 2. Insert matching row into patients (patient_id = user_id by FK design)
+            $this->db->prepare(
+                'INSERT INTO patients (patient_id) VALUES (?)'
+            )->execute([$userId]);
+
+            $this->db->commit();
+            return true;
+        } catch (PDOException $e) {
+            $this->db->rollBack();
+            throw $e; // re-throw so handlePatientRegister() catches it
+        }
     }
 }
 

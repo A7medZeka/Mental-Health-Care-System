@@ -11,7 +11,7 @@ interface PatientIntakeInterface {
      * @param int $patient_id
      * @return array|null
      */
-    public function getIntakeFormStatus($patient_id);
+    public function getIntakeFormStatus(int $patient_id): ?array;
     
     /**
      * Submit intake form for patient
@@ -19,5 +19,5 @@ interface PatientIntakeInterface {
      * @param array $form_data
      * @return bool
      */
-    public function submitIntakeForm($patient_id, $form_data);
+    public function submitIntakeForm(int $patient_id, $form_data): bool;
 }
