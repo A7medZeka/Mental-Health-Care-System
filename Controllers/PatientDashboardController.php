@@ -6,20 +6,6 @@ require_once __DIR__ . '/../Core/ObserverPattern.php';
 require_once __DIR__ . '/../Models/Dashboard.php';
 require_once __DIR__ . '/../Models/Patient.php';
 
-// =============================================================================
-// PatientDashboardController
-//
-// SOLID:
-//   S – Only handles HTTP request routing + auth guards; no business logic.
-//   O – New actions added by extending the match() table, no core changes.
-//   L – Substitutable; could be replaced by any controller with handleRequest().
-//   I – Delegates to fine-grained manager classes (each implements one interface).
-//   D – Depends on Patient model abstractions, not concrete DB calls.
-//
-// Singleton  → SingletonDatabase::getInstance() (via parent User chain).
-// Observer   → PatientAppointmentManager wires PatientStatusManager internally.
-// Immutable  → ImmutablePatientRecord / ImmutableUserFactory used for safe reads.
-// =============================================================================
 class PatientDashboardController
 {
     private Dashboard                  $dashboardModel;
@@ -34,7 +20,6 @@ class PatientDashboardController
 
     public function __construct()
     {
-        // Singleton DB initialised once — all managers share the same connection
         SingletonDatabase::getInstance();
 
         $this->dashboardModel  = new Dashboard();
@@ -48,9 +33,7 @@ class PatientDashboardController
         $this->notifManager    = new PatientNotificationManager();
     }
 
-    // =========================================================================
-    // Entry point — called by every Patient view file
-    // =========================================================================
+
     public function handleRequest(): array
     {
         if (session_status() === PHP_SESSION_NONE) {
@@ -70,9 +53,6 @@ class PatientDashboardController
         return $this->getDashboardData();
     }
 
-    // =========================================================================
-    // Auth guards
-    // =========================================================================
     private function requireLogin(): void
     {
         if (empty($_SESSION['user_id'])) {
@@ -94,9 +74,7 @@ class PatientDashboardController
         exit();
     }
 
-    // =========================================================================
-    // POST dispatcher  — routes only, zero business logic here (SRP)
-    // =========================================================================
+
     private function handlePost(): void
     {
         $action = $_POST['action'] ?? '';
@@ -148,9 +126,7 @@ class PatientDashboardController
         };
     }
 
-    // =========================================================================
-    // Profile handlers
-    // =========================================================================
+
     private function handleUpdateProfile(): void
     {
         header('Content-Type: application/json');
@@ -180,9 +156,6 @@ class PatientDashboardController
         exit();
     }
 
-    // =========================================================================
-    // Appointment handlers
-    // =========================================================================
     private function handleBookAppointment(): void
     {
         header('Content-Type: application/json');
@@ -219,9 +192,7 @@ class PatientDashboardController
         exit();
     }
 
-    // =========================================================================
-    // Mood handler
-    // =========================================================================
+
     private function handleLogMood(): void
     {
         header('Content-Type: application/json');
@@ -245,9 +216,7 @@ class PatientDashboardController
         exit();
     }
 
-    // =========================================================================
-    // Goal handlers
-    // =========================================================================
+
     private function handleCreateGoal(): void
     {
         header('Content-Type: application/json');
@@ -282,9 +251,6 @@ class PatientDashboardController
         exit();
     }
 
-    // =========================================================================
-    // Journal handlers
-    // =========================================================================
     private function handleCreateJournal(): void
     {
         header('Content-Type: application/json');
@@ -318,9 +284,6 @@ class PatientDashboardController
         exit();
     }
 
-    // =========================================================================
-    // Payment & Insurance handlers
-    // =========================================================================
     private function handleSaveCard(): void
     {
         header('Content-Type: application/json');
@@ -354,9 +317,6 @@ class PatientDashboardController
         exit();
     }
 
-    // =========================================================================
-    // Consent handler
-    // =========================================================================
     private function handleSignConsent(): void
     {
         header('Content-Type: application/json');
@@ -373,9 +333,6 @@ class PatientDashboardController
         exit();
     }
 
-    // =========================================================================
-    // Resource handler
-    // =========================================================================
     private function handleLogResource(): void
     {
         header('Content-Type: application/json');
@@ -393,9 +350,7 @@ class PatientDashboardController
         exit();
     }
 
-    // =========================================================================
-    // Notification handler
-    // =========================================================================
+
     private function handleMarkNotificationsRead(): void
     {
         header('Content-Type: application/json');
@@ -405,9 +360,7 @@ class PatientDashboardController
         exit();
     }
 
-    // =========================================================================
-    // Data providers — called by view files
-    // =========================================================================
+
     public function getDashboardData(): array
     {
         $uid = (int)$_SESSION['user_id'];
@@ -530,9 +483,7 @@ class PatientDashboardController
         return $this->dashboardModel->getOnboardingChecklist((int)$_SESSION['user_id']);
     }
 
-    // =========================================================================
-    // Helpers
-    // =========================================================================
+
     private function jsonError(string $message): void
     {
         header('Content-Type: application/json');
@@ -540,9 +491,6 @@ class PatientDashboardController
         exit();
     }
 
-    // =========================================================================
-    // Intake Form handler
-    // =========================================================================
     private function handleSubmitIntake(): void
     {
         header('Content-Type: application/json');
@@ -559,13 +507,10 @@ class PatientDashboardController
         try {
             $conn = SingletonDatabase::getInstance()->getConnection();
 
-            // --- Ensure the patients row exists (patient_id = user_id by FK design) ---
-            // If registration didn't create it yet, create it now silently.
             $conn->prepare(
                 "INSERT IGNORE INTO patients (patient_id) VALUES (?)"
             )->execute([$userId]);
 
-            // --- Upsert intake form (one record per patient) ---
             $conn->prepare(
                 "INSERT INTO intake_forms (patient_id, total_score, submission_date, respones)
                  VALUES (?, ?, NOW(), ?)
@@ -575,14 +520,12 @@ class PatientDashboardController
                    respones        = VALUES(respones)"
             )->execute([$userId, $totalScore, $responses]);
 
-            // --- Update level_of_care on patients row ---
             if (!empty($level)) {
                 $conn->prepare(
                     "UPDATE patients SET level_of_care = ? WHERE patient_id = ?"
                 )->execute([$level, $userId]);
             }
 
-            // --- Mark user as Screened ---
             $conn->prepare(
                 "UPDATE users SET status = 'Screened'
                  WHERE user_id = ? AND (status = 'Registered' OR status IS NULL)"
@@ -596,9 +539,7 @@ class PatientDashboardController
         exit();
     }
 
-    // =========================================================================
-    // Forum handlers
-    // =========================================================================
+
     private function handlePostForum(): void
     {
         header('Content-Type: application/json');

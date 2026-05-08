@@ -13,19 +13,11 @@ require_once __DIR__ . '/../Interfaces/PatientPaymentInterface.php';
 require_once __DIR__ . '/../Interfaces/PatientConsentInterface.php';
 require_once __DIR__ . '/../Interfaces/PatientResourceInterface.php';
 
-// =============================================================================
-// Base Patient — profile + preferences
-// SOLID: SRP (only patient identity/profile concerns)
-//        OCP (open for extension via subclasses)
-//        LSP (substitutable for User)
-// Singleton DB is injected via parent::__construct() → User → SingletonDatabase
-// Immutable value objects used for read-only data transfer
-// =============================================================================
+
 class Patient extends User implements
     PatientProfileInterface,
     PatientIntakeInterface
 {
-    // ── Factory: build ImmutablePatientRecord for safe read-only transfers ──
     private function toImmutable(array $row): ImmutablePatientRecord
     {
         return new ImmutablePatientRecord(
@@ -45,8 +37,6 @@ class Patient extends User implements
             $row['updated_at']    ?? null
         );
     }
-
-    // ── PatientProfileInterface ─────────────────────────────────────────────
 
     public function getProfile(int $patientId): ?array
     {
@@ -122,7 +112,6 @@ class Patient extends User implements
         return ['success' => true, 'message' => 'Preferences saved.'];
     }
 
-    // ── PatientRepositoryInterface ──────────────────────────────────────────
 
     public function getMyTherapist(int $patient_id): ?array
     {
@@ -188,8 +177,6 @@ class Patient extends User implements
         return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
     }
 
-    // ── PatientIntakeInterface ──────────────────────────────────────────────
-
     public function getIntakeFormStatus(int $patient_id): ?array
     {
         $stmt = $this->conn->prepare(
@@ -209,11 +196,7 @@ class Patient extends User implements
     }
 }
 
-// =============================================================================
-// PatientAppointmentManager — appointment & session booking
-// SOLID: SRP, OCP (extends Patient), DIP (depends on interfaces)
-// Observer: fires PatientStatusChangeEvent when status changes
-// =============================================================================
+
 class PatientAppointmentManager extends Patient implements PatientAppointmentInterface
 {
     private PatientStatusManager $statusManager;
@@ -221,7 +204,6 @@ class PatientAppointmentManager extends Patient implements PatientAppointmentInt
     public function __construct()
     {
         parent::__construct();
-        // Observer pattern: set up status manager with all concrete observers
         $this->statusManager = new PatientStatusManager();
         $this->statusManager->attach(new PatientStatusDatabaseLogger());
         $this->statusManager->attach(new PatientStatusEmailNotifier());
@@ -230,7 +212,6 @@ class PatientAppointmentManager extends Patient implements PatientAppointmentInt
 
     public function bookAppointment(int $patientId, int $therapistId, string $date, string $sessionType): array
     {
-        // Validate therapist belongs to this patient's match
         $matchCheck = $this->conn->prepare(
             "SELECT match_id FROM therapist_matches
              WHERE patient_id = ? AND therapist_id = ? AND status = 'Accepted'"
@@ -240,7 +221,6 @@ class PatientAppointmentManager extends Patient implements PatientAppointmentInt
             return ['success' => false, 'message' => 'This therapist is not your assigned match.'];
         }
 
-        // Check for duplicate booking
         $dupCheck = $this->conn->prepare(
             "SELECT appointment_id FROM appointments
              WHERE patient_id = ? AND therapist_id = ?
@@ -293,7 +273,6 @@ class PatientAppointmentManager extends Patient implements PatientAppointmentInt
         return parent::getPastAppointments($patientId);
     }
 
-    /** Get all therapists available to this patient (active + verified) */
     public function getAvailableTherapists(): array
     {
         $stmt = $this->conn->prepare(
@@ -310,22 +289,16 @@ class PatientAppointmentManager extends Patient implements PatientAppointmentInt
     }
 }
 
-// =============================================================================
-// PatientWellnessManager — mood tracking + wellness goals
-// SOLID: SRP, OCP
-// Immutable: getMoodSnapshot() returns ImmutablePatientRecord-style value object
-// =============================================================================
+
 class PatientWellnessManager extends Patient implements PatientWellnessInterface
 {
     public function logMood($patient_id, $mood_score, $mood_label, $notes = '')
     {
-        // Prevent duplicate entry for same day
         $check = $this->conn->prepare(
             "SELECT entry_id FROM mood_entries WHERE patient_id = ? AND entry_date = CURDATE()"
         );
         $check->execute([$patient_id]);
         if ($check->fetch()) {
-            // Update existing
             $stmt = $this->conn->prepare(
                 "UPDATE mood_entries SET mood_score = ?, mood_label = ?, note = ?
                  WHERE patient_id = ? AND entry_date = CURDATE()"
@@ -393,10 +366,6 @@ class PatientWellnessManager extends Patient implements PatientWellnessInterface
     }
 }
 
-// =============================================================================
-// PatientJournalManager — journal CRUD + privacy toggle
-// SOLID: SRP, OCP
-// =============================================================================
 class PatientJournalManager extends Patient implements PatientJournalInterface
 {
     public function getJournalEntries($patient_id, $limit = 10)
@@ -446,11 +415,6 @@ class PatientJournalManager extends Patient implements PatientJournalInterface
     }
 }
 
-// =============================================================================
-// PatientPaymentManager — payments, insurance, disputes
-// SOLID: SRP, DIP (depends on interfaces)
-// Immutable: payment records are never modified after creation
-// =============================================================================
 class PatientPaymentManager extends Patient implements PatientPaymentInterface
 {
     public function getPayments(int $patientId): array
@@ -471,7 +435,6 @@ class PatientPaymentManager extends Patient implements PatientPaymentInterface
 
     public function saveCard(int $patientId, array $cardData): array
     {
-        // Validate required fields
         $required = ['card_number', 'cvv', 'expiry_date', 'cardholder_name', 'amount'];
         foreach ($required as $field) {
             if (empty($cardData[$field])) {
@@ -484,14 +447,11 @@ class PatientPaymentManager extends Patient implements PatientPaymentInterface
             return ['success' => false, 'message' => 'Amount must be greater than zero.'];
         }
 
-        // Mask card — store only last 4 digits (PCI-safe simulation)
         $rawCard = preg_replace('/\D/', '', $cardData['card_number']);
         $masked  = 'xxxx-xxxx-xxxx-' . substr($rawCard, -4);
 
-        // Generate a unique invoice number
         $invoice = 'INV-' . strtoupper(substr(md5(uniqid($patientId . time(), true)), 0, 10));
 
-        // INSERT a new payment record (simulation — status = Paid immediately)
         $this->conn->prepare(
             "INSERT INTO payments
                 (invoice_number, patient_id, amount, card_number, cvv, expiry_date, cardholder_name, status, payment_date)
@@ -501,7 +461,7 @@ class PatientPaymentManager extends Patient implements PatientPaymentInterface
             $patientId,
             $amount,
             $masked,
-            '***',          // never store real CVV
+            '***',          
             $cardData['expiry_date'],
             $cardData['cardholder_name'],
         ]);
@@ -568,7 +528,6 @@ class PatientPaymentManager extends Patient implements PatientPaymentInterface
             return ['success' => false, 'message' => 'Invalid dispute reason.'];
         }
 
-        // Verify appointment belongs to patient
         $appt = $this->conn->prepare(
             "SELECT appointment_id FROM appointments WHERE appointment_id = ? AND patient_id = ?"
         );
@@ -577,7 +536,6 @@ class PatientPaymentManager extends Patient implements PatientPaymentInterface
             return ['success' => false, 'message' => 'Appointment not found.'];
         }
 
-        // Unique dispute code
         $code = 'D-' . strtoupper(substr(md5(uniqid()), 0, 6));
 
         $stmt = $this->conn->prepare(
@@ -590,10 +548,6 @@ class PatientPaymentManager extends Patient implements PatientPaymentInterface
     }
 }
 
-// =============================================================================
-// PatientConsentManager — legal consent records
-// SOLID: SRP, OCP
-// =============================================================================
 class PatientConsentManager extends Patient implements PatientConsentInterface
 {
     public function getConsents(int $patientId): array
@@ -607,7 +561,6 @@ class PatientConsentManager extends Patient implements PatientConsentInterface
 
     public function signConsent(int $patientId, string $documentName, string $version): array
     {
-        // Idempotent — don't create duplicate signatures for same doc+version
         $existing = $this->conn->prepare(
             "SELECT consent_id FROM consents
              WHERE patient_id = ? AND document_name = ? AND document_version = ?"
@@ -627,15 +580,10 @@ class PatientConsentManager extends Patient implements PatientConsentInterface
     }
 }
 
-// =============================================================================
-// PatientResourceManager — wellness resources + usage logs
-// SOLID: SRP, DIP
-// =============================================================================
 class PatientResourceManager extends Patient implements PatientResourceInterface
 {
     public function getResources(int $patientId): array
     {
-        // Get today's mood score for smart recommendations
         $moodStmt = $this->conn->prepare(
             "SELECT mood_score FROM mood_entries WHERE patient_id = ? AND entry_date = CURDATE()"
         );
@@ -643,7 +591,6 @@ class PatientResourceManager extends Patient implements PatientResourceInterface
         $mood = $moodStmt->fetch(PDO::FETCH_ASSOC);
         $moodScore = $mood['mood_score'] ?? null;
 
-        // Resources the patient is explicitly allowed to access
         $accessStmt = $this->conn->prepare(
             "SELECT wr.*
              FROM wellness_resources wr
@@ -656,7 +603,6 @@ class PatientResourceManager extends Patient implements PatientResourceInterface
 
         if (!empty($controlled)) return $controlled;
 
-        // Fallback: serve all resources, sorted by mood relevance
         $query = "SELECT * FROM wellness_resources ORDER BY resource_id ASC";
         if ($moodScore !== null) {
             $query = "SELECT *, ABS(suggested_mood_score - ?) AS relevance
@@ -678,10 +624,6 @@ class PatientResourceManager extends Patient implements PatientResourceInterface
     }
 }
 
-// =============================================================================
-// PatientNotificationManager — read notifications
-// SOLID: SRP
-// =============================================================================
 class PatientNotificationManager extends Patient
 {
     public function getNotifications(int $patientId, int $limit = 20): array
