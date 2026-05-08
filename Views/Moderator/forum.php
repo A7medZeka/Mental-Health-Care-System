@@ -1,25 +1,13 @@
 <?php
-require_once __DIR__ . '/../../Core/Validation.php';
-require_once __DIR__ . '/../../Core/Database.php';
-session_start();
-$method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
-if (empty($_SESSION['user_id'])) {
-    header('Location: ../Auth/login.php');
-    exit();
-}
-checkMethod($method);
-if ($_SESSION['role'] !== 'Moderator') {
-    $map = [
-        'Admin'     => '../Admin/dashboard.php',
-        'Patient'   => '../Patient/dashboard.php',
-        'Therapist' => '../Therapist/dashboard.php',
-        ];
-        header('Location: ' . ($map[$_SESSION['role']] ?? '../Auth/login.php'));
-        exit();
-        }
-$email = $_SESSION['email'] ?? '';
-
-
+require_once __DIR__ . '/../../Models/Repositories/PostRepository.php';
+require_once __DIR__ . '/../../Models/Services/CrisisService.php';
+require_once __DIR__ . '/../../Models/Services/NotificationService.php';
+require_once __DIR__ . '/../../Models/Services/ModerationService.php';
+$repo = new PostRepository();
+$crisis = new CrisisService(new NotificationService());
+$modService = new ModerationService($repo, $crisis);
+$flaggedPosts = $modService->getModerationQueue();
+if (empty($flaggedPosts));
 ?>
 <!DOCTYPE html>
 <html lang="en">
