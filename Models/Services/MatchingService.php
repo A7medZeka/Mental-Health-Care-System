@@ -1,8 +1,16 @@
 <?php
-/* very very very important to read the comment
-below
-*/
-// check the documentation pls if there is a math relation for matching
+/**
+ * MatchingService — UC 2: Match Patient with Therapist.
+ *
+ * SD flow:
+ *   Patient → MatchingService.filterTherapists(patient)
+ *     → rankTherapists(candidates, patient)
+ *       → populateMatchDetails(therapist, patient)  [private]
+ *     → selectBestMatch(ranked)
+ *     → return TherapistMatch
+ *
+ * IMPORTANT: read the documentation if there is a math relation for matching
+ */
 require_once __DIR__ . '/../../Core/SingletonDatabase.php';
 require_once __DIR__ . '/../Therapist.php';
 require_once __DIR__ . '/../TherapistMatch.php';

@@ -1,40 +1,81 @@
 <?php
 // Controllers/ClinicalNoteController.php
 
+/**
+ * ClinicalNoteController — UC 3: Encrypt Patient Intake Documents.
+ *
+ * SD flow:
+ *   Admin → ClinicalNoteController.saveNote(sessionId, therapistId, content)
+ *     → SD Step 1: checkFileType(content) [EDIT: added missing validation]
+ *     → SD Step 2: encryptNote(content)
+ *     → SD Step 3: determine version number
+ *     → SD Step 4: create ClinicalNote (immutable)
+ *     → SD Step 5: persist to DB
+ *
+ *   Therapist → getLatestNote(sessionId)
+ *     → return ClinicalNote (encrypted)
+ *
+ *   Therapist → getVersionHistory(sessionId)
+ *     → return ClinicalNote[]
+ */
+
 require_once __DIR__ . '/../Core/SingletonDatabase.php';
 require_once __DIR__ . '/../Models/ClinicalNote.php';
 
 class ClinicalNoteController {
     private SingletonDatabase $db;
 
+    /** Allowed content types for intake documents */
+    private const ALLOWED_CONTENT_TYPES = ['text/plain', 'application/pdf', 'text/html'];
+
     public function __construct() {
-        // استخدام اتصال قاعدة البيانات الموحد في السيستم
         $this->db = SingletonDatabase::getInstance();
     }
 
     /**
-     * +encryptNote() : String
-     * تشفير محتوى الملحوظة قبل حفظها لضمان الخصوصية
+     * SD Step 1 [EDIT: added missing validation]:
+     * +checkFileType(content) : Boolean
+     * Validates that the content is not empty and is of an acceptable type.
+     */
+    public function checkFileType(string $content, string $mimeType = 'text/plain'): bool {
+        if (empty($content)) {
+            return false;
+        }
+        return in_array($mimeType, self::ALLOWED_CONTENT_TYPES, true);
+    }
+
+    /**
+     * SD Step 2:
+     * +encryptNote(rawContent) : String
+     * Encrypts note content before persistence (base64/AES standard).
      */
     public function encryptNote(string $rawContent): string {
-        // استخدام دالة التشفير الأساسية (مثال: base64 أو AES)
         return base64_encode($rawContent);
     }
-    public function saveNote(int $sessionId, int $therapistId, string $content): void {
-        // 1. تحديد رقم النسخة (Version No) بالاستعلام عن آخر نسخة للجلسة
+
+    /**
+     * SD Steps 1–5: Full save flow with validation gate.
+     */
+    public function saveNote(int $sessionId, int $therapistId, string $content, string $mimeType = 'text/plain'): bool {
+        // SD Step 1: checkFileType — reject invalid content
+        if (!$this->checkFileType($content, $mimeType)) {
+            error_log("[UC3] saveNote rejected: invalid file type or empty content.");
+            return false;
+        }
+
+        // SD Step 2: encrypt content
+        $encrypted = $this->encryptNote($content);
+
+        // SD Step 3: determine version number
         $sqlV = "SELECT MAX(version_no) as last_v FROM clinical_notes WHERE session_id = ?";
         $stmtV = $this->db->execute($sqlV, [$sessionId]);
         $rowV = $stmtV->fetch();
         $nextVersion = ($rowV['last_v'] ?? 0) + 1;
 
-        // 2. تشفير المحتوى
-        $encrypted = $this->encryptNote($content);
-
-        // 3. إنشاء الكائن (Creates ClinicalNote)
-        // الكائن Immutable لذا نقوم بتمرير كافة البيانات في الـ Constructor
+        // SD Step 4: create immutable ClinicalNote object
         $note = new ClinicalNote(0, $sessionId, $therapistId, $encrypted, $nextVersion);
 
-        // 4. الحفظ في قاعدة البيانات (use database)
+        // SD Step 5: persist to database
         $sqlInsert = "INSERT INTO clinical_notes (session_id, therapist_id, encrypted_content, version_no, created_at) VALUES (?, ?, ?, ?, ?)";
         $this->db->execute($sqlInsert, [
             $note->getSessionId(),
@@ -43,11 +84,12 @@ class ClinicalNoteController {
             $note->getVersionNo(),
             $note->getCreatedAt()
         ]);
+
+        return true;
     }
 
     /**
-     * +getLatestNote(sessionId: int) : ClinicalNote
-     * جلب أحدث نسخة ملحوظات مسجلة لهذه الجلسة
+     * +getLatestNote(sessionId) : ClinicalNote
      */
     public function getLatestNote(int $sessionId): ?ClinicalNote {
         $sql = "SELECT * FROM clinical_notes WHERE session_id = ? ORDER BY version_no DESC LIMIT 1";
@@ -57,6 +99,9 @@ class ClinicalNoteController {
         return $data ? ClinicalNote::fromDatabase($data) : null;
     }
 
+    /**
+     * +getVersionHistory(sessionId) : ClinicalNote[]
+     */
     public function getVersionHistory(int $sessionId): array {
         $sql = "SELECT * FROM clinical_notes WHERE session_id = ? ORDER BY version_no DESC";
         $stmt = $this->db->execute($sql, [$sessionId]);

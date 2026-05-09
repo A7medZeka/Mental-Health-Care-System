@@ -54,7 +54,35 @@ class Session implements IStateMachine {
     public function getTherapist(): ?Therapist { return $this->therapist; }
     public function getState(): string { return $this->session_state; }
 
+    /**
+     * IStateMachine::transition — enforces valid session states.
+     *
+     * Valid transitions (UC 13):
+     *   Scheduled  → CheckedIn
+     *   Scheduled  → NoShow
+     *   CheckedIn  → Live
+     *   Live       → Completed
+     */
     public function transition(string $newState): bool {
+        $allowed = [
+            'Scheduled'  => ['CheckedIn', 'NoShow'],
+            'CheckedIn'  => ['Live'],
+            'Live'       => ['Completed'],
+            // Terminal states — no further transitions
+            'Completed'  => [],
+            'NoShow'     => [],
+        ];
+
+        $current = $this->session_state;
+
+        if (!isset($allowed[$current])) {
+            return false; // unknown current state
+        }
+
+        if (!in_array($newState, $allowed[$current], true)) {
+            return false; // illegal transition
+        }
+
         $this->session_state = $newState;
         return true;
     }

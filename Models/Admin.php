@@ -94,15 +94,24 @@ class Admin extends User {
 
 // =============================================================================
 // Patient Management – all patient business logic & DB operations
+// UC 5 — Manage Patient Triage Status (EDIT FLOW ONLY)
 // =============================================================================
 class AdminPatientManager extends Admin implements AdminPatientManagerInterface {
 
-    private const VALID_STATUSES = ['Registered', 'Screened', 'Matched', 'Active'];
+    private const VALID_STATUSES = ['Registered', 'Screened', 'Matched', 'Active', 'Waitlisted'];
     private const VALID_FLOW = [
         'Registered' => 'Screened',
         'Screened'   => 'Matched',
         'Matched'    => 'Active',
         'Active'     => null,
+        // SD-EXTENSION: Waitlisted can be reached from Screened or Matched
+        'Waitlisted' => 'Matched',
+    ];
+
+    // SD-EXTENSION: Additional allowed transitions for Waitlisted state
+    private const VALID_FLOW_EXTENDED = [
+        'Screened' => ['Matched', 'Waitlisted'],
+        'Matched'  => ['Active', 'Waitlisted'],
     ];
 
     private const MAX_FILE_SIZE  = 5 * 1024 * 1024;
@@ -147,23 +156,46 @@ class AdminPatientManager extends Admin implements AdminPatientManagerInterface 
         return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
     }
 
+    /**
+     * UC 5 SD flow:
+     *   Admin → updatePatientStatus(patientId, currentStatus, newStatus)
+     *     → SD Step 1: RBACController.checkAccess() [EDIT: added RBAC gate]
+     *     → SD Step 2: validate newStatus against VALID_STATUSES
+     *     → SD Step 3: validate transition against VALID_FLOW
+     *     → SD Step 4: [alt] extended flow check for Waitlisted
+     *     → SD Step 5: fetch patient, verify current status matches
+     *     → SD Step 6: persist status change
+     *     → SD Step 7: log audit entry
+     *     → return result
+     */
     public function updatePatientStatus(int $patientId, string $currentStatus, string $newStatus): array {
+        // SD Step 1: RBAC gate — verify caller has Admin role
+        if (!$this->validateAdminAccess()) {
+            return ['success' => false, 'message' => 'Access denied. Admin role required.'];
+        }
+
+        // SD Step 2: validate target status
         if (!in_array($newStatus, self::VALID_STATUSES, true)) {
             return ['success' => false, 'message' => 'Invalid status value.'];
         }
 
+        // SD Step 3 + 4: validate transition (standard + extended Waitlisted)
         $allowedNext = self::VALID_FLOW[$currentStatus] ?? null;
-        if ($newStatus !== $allowedNext) {
+        $extendedAllowed = self::VALID_FLOW_EXTENDED[$currentStatus] ?? [];
+
+        if ($newStatus !== $allowedNext && !in_array($newStatus, $extendedAllowed, true)) {
+            $validOptions = array_filter(array_merge([$allowedNext], $extendedAllowed));
             return [
                 'success' => false,
                 'message' => sprintf(
-                    "Invalid transition. From '%s' you can only move to '%s'.",
+                    "Invalid transition. From '%s' you can only move to: %s.",
                     $currentStatus,
-                    $allowedNext ?? 'nowhere'
+                    !empty($validOptions) ? implode(', ', $validOptions) : 'nowhere'
                 ),
             ];
         }
 
+        // SD Step 5: fetch patient and verify current status
         $stmt = $this->conn->prepare(
             "SELECT user_id, status FROM users WHERE user_id = ? AND role = 'Patient'"
         );
@@ -178,12 +210,13 @@ class AdminPatientManager extends Admin implements AdminPatientManagerInterface 
             return ['success' => false, 'message' => 'Status mismatch. Please refresh the page.'];
         }
 
+        // SD Step 6: persist
         $update = $this->conn->prepare(
             "UPDATE users SET status = ? WHERE user_id = ? AND role = 'Patient'"
         );
         $update->execute([$newStatus, $patientId]);
 
-        // Log the action using admin's User variables
+        // SD Step 7: audit log
         $this->logAuditEntry('patient_status_update', [
             'patient_id' => $patientId,
             'old_status' => $currentStatus,
@@ -288,6 +321,14 @@ class AdminRBACManager extends Admin implements AdminRBACManagerInterface {
 
     // =========================================================================
     // Business logic: promote a user to the next allowed role
+    // RBAC Panel SD flow:
+    //   Admin → promoteUser(targetId, newRole)
+    //     → SD Step 1: RBAC access check
+    //     → SD Step 2: fetch current role
+    //     → SD Step 3: validate transition rules
+    //     → SD Step 4: [alt] conflict check — cannot promote self
+    //     → SD Step 5: persist role change
+    //     → SD Step 6: log RBAC action
     // =========================================================================
 
     /**
@@ -298,6 +339,10 @@ class AdminRBACManager extends Admin implements AdminRBACManagerInterface {
      * @return array ['success' => bool, 'message' => string, ...]
      */
     public function promoteUser(int $targetId, string $newRole): array {
+        // SD Step 1: RBAC access check
+        if (!$this->validateAdminAccess()) {
+            return ['success' => false, 'message' => 'Access denied. Admin role required.'];
+        }
         // ── Fetch current state ───────────────────────────────────────────────
         $stmt = $this->conn->prepare('SELECT `role`, username FROM users WHERE user_id = ?');
         $stmt->execute([$targetId]);
@@ -444,7 +489,7 @@ class AdminRBACManager extends Admin implements AdminRBACManagerInterface {
 }
 
 // =============================================================================
-// Audit Management
+// Audit Management — UC 35: Execute Data Purge / Audit Trail
 // =============================================================================
 class AdminAuditManager extends Admin implements AdminAuditManagerInterface {
 
@@ -471,6 +516,40 @@ class AdminAuditManager extends Admin implements AdminAuditManagerInterface {
         $stmt = $this->conn->prepare($query);
         $stmt->execute($params);
         return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    }
+
+    /**
+     * UC 35 SD flow:
+     *   Admin → AdminAuditManager.verifyIntegrityPolicy()
+     *     → [alt] DELETE/UPDATE request → DENIED (audit logs are immutable)
+     *     → return rejection message
+     *
+     * This method explicitly rejects any attempt to delete or modify audit logs.
+     * AuditLog records are INSERT-ONLY by design.
+     */
+    public function verifyIntegrityPolicy(): array {
+        return [
+            'success'  => false,
+            'message'  => 'Audit log records are immutable. DELETE and UPDATE operations are denied by integrity policy.',
+            'policy'   => 'INSERT_ONLY',
+            'enforced' => true,
+        ];
+    }
+
+    /**
+     * UC 35: Attempt to purge → always denied.
+     */
+    public function requestDataPurge(int $logId): array {
+        // SD Step: verify integrity policy first
+        $policy = $this->verifyIntegrityPolicy();
+        if ($policy['enforced']) {
+            return [
+                'success' => false,
+                'message' => 'Data purge request DENIED. ' . $policy['message'],
+            ];
+        }
+        // This code is unreachable by design — audit logs cannot be purged
+        return ['success' => false, 'message' => 'Unexpected state.'];
     }
 }
 
@@ -564,9 +643,28 @@ class AdminTherapistManager extends Admin implements AdminTherapistManagerInterf
 // =============================================================================
 // Therapist Licence Management
 // =============================================================================
+/**
+ * UC 6 — Audit Therapist Credentials (EDIT FLOW ONLY)
+ *
+ * SD flow:
+ *   Admin → renewTherapistLicense(therapist_id, new_expiry, credential_path)
+ *     → SD Step 1: validate expiry date is in the future
+ *     → SD Step 2: [alt] expired → return error
+ *     → SD Step 3: persist renewal
+ *     → SD Step 4: log audit entry for credential action
+ */
 class AdminTherapistLicenseManager extends AdminTherapistManager implements AdminTherapistLicenseManagerInterface {
 
     public function renewTherapistLicense(int $therapist_id, string $new_expiry, ?string $credential_path = null): bool {
+        // SD Step 1: validate expiry date is in the future
+        $expiryTime = strtotime($new_expiry);
+        if ($expiryTime === false || $expiryTime <= time()) {
+            // SD Step 2 [alt]: expired or invalid date — reject
+            error_log("[UC6] License renewal rejected: expiry date '{$new_expiry}' is not in the future.");
+            return false;
+        }
+
+        // SD Step 3: persist renewal
         if ($credential_path) {
             $stmt = $this->conn->prepare(
                 "UPDATE therapists
@@ -582,6 +680,10 @@ class AdminTherapistLicenseManager extends AdminTherapistManager implements Admi
             );
             $stmt->execute([$new_expiry, $therapist_id]);
         }
+
+        // SD Step 4: log audit entry for every credential action
+        $this->logCredentialAudit($therapist_id, $new_expiry, $credential_path);
+
         return $stmt->rowCount() > 0;
     }
 
@@ -605,6 +707,31 @@ class AdminTherapistLicenseManager extends AdminTherapistManager implements Admi
         ");
         $stmt->execute([$days]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    }
+
+    /**
+     * SD Step 4 helper: log every credential action to audit_logs.
+     */
+    private function logCredentialAudit(int $therapistId, string $newExpiry, ?string $credPath): void {
+        try {
+            $stmt = $this->conn->prepare(
+                "INSERT INTO audit_logs (action, severity, description, user_id, created_at)
+                 VALUES (?, ?, ?, ?, NOW())"
+            );
+            $stmt->execute([
+                'CREDENTIAL_RENEWAL',
+                'Info',
+                json_encode([
+                    'therapist_id'   => $therapistId,
+                    'new_expiry'     => $newExpiry,
+                    'credential_path'=> $credPath,
+                    'admin_id'       => $this->user_id,
+                ]),
+                $this->user_id
+            ]);
+        } catch (\Exception $e) {
+            error_log('[UC6 Audit] ' . $e->getMessage());
+        }
     }
 }
 

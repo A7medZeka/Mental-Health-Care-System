@@ -1,10 +1,26 @@
 <?php
 // Controllers/SessionController.php
 
+/**
+ * SessionController — UC 13: Manage Session Lifecycle.
+ *
+ * SD flow:
+ *   Patient checks in → startSession(sessionId)
+ *     → transitionState(sessionId, "CheckedIn")
+ *   Therapist admits   → admitPatient(sessionId, patientId)
+ *     → transitionState(sessionId, "Live")
+ *   Therapist ends     → endSession(sessionId)
+ *     → transitionState(sessionId, "Completed")
+ *     → generateInvoice(sessionId)
+ *   System timeout     → detectNoShow(sessionId)
+ *     → transitionState(sessionId, "NoShow")
+ *     → logNoShow audit entry
+ */
+
 require_once __DIR__ . '/../Core/SingletonDatabase.php';
 require_once __DIR__ . '/../Models/Appointment.php';
 require_once __DIR__ . '/../Models/Payment.php';
-require_once __DIR__ . '/../Models/Session.php'; // استدعاء الموديل للإدارة
+require_once __DIR__ . '/../Models/Session.php';
 
 class SessionController {
     private SingletonDatabase $db;
@@ -14,24 +30,23 @@ class SessionController {
     }
 
     /**
-     * +transitionState() : Boolean
-     * تحقيق علاقة "manages": الكنترولر يتحكم في حالة كائن الجلسة
+     * +transitionState(sessionId, newState) : Boolean
+     * Core state machine gate — delegates to Session model.
      */
     public function transitionState(int $sessionId, string $newState): bool {
-        // 1. جلب بيانات الجلسة من الداتابيز
+        // SD Step 1: fetch session data from DB
         $sql = "SELECT * FROM sessions WHERE session_id = ?";
         $stmt = $this->db->execute($sql, [$sessionId]);
         $data = $stmt->fetch();
 
         if (!$data) return false;
 
-        // 2. إنشاء كائن الجلسة (Manages instance)
-        // لاحظ إننا بنمرر الداتا بس عشان نحافظ على علاقة الـ contains therapist القديمة
+        // SD Step 2: create Session object (manages instance)
         $session = new Session($data);
 
-        // 3. استخدام الـ Logic بتاع الـ State Machine
+        // SD Step 3: delegate to Session::transition() state machine
         if ($session->transition($newState)) {
-            // 4. تحديث الداتابيز بالحالة الجديدة (updates status)
+            // SD Step 4: persist new state to DB
             $updateSql = "UPDATE sessions SET session_state = ? WHERE session_id = ?";
             $this->db->execute($updateSql, [$session->getState(), $sessionId]);
             return true;
@@ -41,25 +56,50 @@ class SessionController {
     }
 
     /**
-     * +endSession() : void
+     * +startSession(sessionId) : void
+     * UC 13 SD: Patient checks in — Scheduled → CheckedIn.
+     */
+    public function startSession(int $sessionId): void {
+        $this->transitionState($sessionId, 'CheckedIn');
+    }
+
+    /**
+     * +admitPatient(sessionId, patientId) : void
+     * UC 13 SD: Therapist admits patient — CheckedIn → Live.
+     */
+    public function admitPatient(int $sessionId, int $patientId): void {
+        $this->transitionState($sessionId, 'Live');
+    }
+
+    /**
+     * +endSession(sessionId) : void
+     * UC 13 SD: Live → Completed, then trigger billing.
      */
     public function endSession(int $sessionId): void {
-        // إدارة إنهاء الجلسة وإصدار الفاتورة أوتوماتيكياً
         if ($this->transitionState($sessionId, 'Completed')) {
-            $this->generateInvoice($sessionId); // Trigger billing
+            $this->generateInvoice($sessionId);
         }
     }
 
     /**
-     * +admitPatient() : void
+     * +detectNoShow(sessionId) : void
+     * UC 13 SD Alt path: Scheduled → NoShow when patient doesn't check in.
      */
-    public function admitPatient(int $sessionId, int $patientId): void {
-        // تغيير الحالة لـ Live عند دخول المريض
-        $this->transitionState($sessionId, 'Live');
+    public function detectNoShow(int $sessionId): void {
+        if ($this->transitionState($sessionId, 'NoShow')) {
+            // Log no-show audit entry
+            $logSql = "INSERT INTO audit_logs (action, severity, description, created_at)
+                       VALUES (?, ?, ?, NOW())";
+            $this->db->execute($logSql, [
+                'PATIENT_NO_SHOW',
+                'Warning',
+                json_encode(['session_id' => $sessionId])
+            ]);
+        }
     }
 
     // ==========================================================
-    // علاقة "triggers invoice"
+    // Billing — triggers invoice (existing logic preserved)
     // ==========================================================
     public function generateInvoice(int $sessionId): void {
         $sql = "SELECT patient_id FROM appointments WHERE appointment_id = (SELECT appointment_id FROM sessions WHERE session_id = ?)";
