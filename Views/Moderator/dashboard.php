@@ -79,7 +79,6 @@ $gender = $userExtra['gender'] ?? 'N/A';
 <body>
 <div class="container-fluid">
     <div class="row">
-        <!-- Moderator Sidebar -->
         <nav class="col-md-3 col-lg-2 d-md-block sidebar collapse bg-white shadow-sm">
             <div class="position-sticky pt-4">
                 <div class="text-center mb-4">
@@ -96,7 +95,7 @@ $gender = $userExtra['gender'] ?? 'N/A';
                     <li class="nav-item">
                         <a class="nav-link" href="forum.php">
                             <i class="bi bi-shield-exclamation me-2"></i> Forum Moderation
-                            <span class="badge bg-danger ms-auto" id="navBadgeForum">5</span>
+                            <span class="badge bg-danger ms-auto" id="navBadgeForum"><?php echo htmlspecialchars($modData['flagged_count'] ?? 0); ?></span>
                         </a>
                     </li>
                     <li class="nav-item">
@@ -107,7 +106,7 @@ $gender = $userExtra['gender'] ?? 'N/A';
                     <li class="nav-item">
                         <a class="nav-link" href="safety-audit.php">
                             <i class="bi bi-journal-medical me-2"></i> Safety Audit Log
-                            <span class="badge bg-warning text-dark ms-auto" id="navBadgeAudit">2</span>
+                            <span class="badge bg-warning text-dark ms-auto" id="navBadgeAudit"><?php echo htmlspecialchars($modData['crisis_count'] ?? 0); ?></span>
                         </a>
                     </li>
                 </ul>
@@ -120,7 +119,6 @@ $gender = $userExtra['gender'] ?? 'N/A';
             </div>
         </nav>
 
-        <!-- Main Content -->
         <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4 py-4 fade-in">
 
             <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-4 border-bottom">
@@ -128,17 +126,16 @@ $gender = $userExtra['gender'] ?? 'N/A';
                     <h1 class="h2 text-primary-custom fw-bold">Moderator Dashboard</h1>
                     <p class="text-secondary-custom mb-0">Overview of forum health, pending actions, and alerts.</p>
                 </div>
-                        <span class="text-secondary-custom me-3"><i class="bi bi-person-circle me-1"></i> <?php echo 'Age: ' . ($age ?: 'N/A') . ' | ' . $role . ' | ' . htmlspecialchars($first_name . ' ' . $last_name).' | '. $gender; ?></span>
+                <span class="text-secondary-custom me-3"><i class="bi bi-person-circle me-1"></i> <?php echo 'Age: ' . ($age ?: 'N/A') . ' | ' . $role . ' | ' . htmlspecialchars($first_name . ' ' . $last_name).' | '. $gender; ?></span>
             </div>
 
-            <!-- Stats Row -->
             <div class="row g-4 mb-4">
                 <div class="col-md-6 col-lg-3">
                     <div class="mod-stat-card">
                         <div class="d-flex justify-content-between align-items-center">
                             <div>
                                 <p class="text-secondary-custom mb-1 small">Flagged Posts</p>
-                                <h3 class="fw-bold mb-0" style="color:#dc3545;">5</h3>
+                                <h3 class="fw-bold mb-0" style="color:#dc3545;"><?php echo htmlspecialchars($modData['flagged_count'] ?? 0); ?></h3>
                                 <small class="text-secondary-custom">Awaiting review</small>
                             </div>
                             <div class="mod-stat-icon bg-danger bg-opacity-10 text-danger"><i class="bi bi-flag-fill"></i></div>
@@ -150,7 +147,7 @@ $gender = $userExtra['gender'] ?? 'N/A';
                         <div class="d-flex justify-content-between align-items-center">
                             <div>
                                 <p class="text-secondary-custom mb-1 small">Crisis Alerts</p>
-                                <h3 class="fw-bold mb-0" style="color:#fd7e14;">2</h3>
+                                <h3 class="fw-bold mb-0" style="color:#fd7e14;"><?php echo htmlspecialchars($modData['crisis_count'] ?? 0); ?></h3>
                                 <small class="text-secondary-custom">Needs escalation</small>
                             </div>
                             <div class="mod-stat-icon bg-warning bg-opacity-10" style="color:#fd7e14;"><i class="bi bi-exclamation-triangle-fill"></i></div>
@@ -162,7 +159,7 @@ $gender = $userExtra['gender'] ?? 'N/A';
                         <div class="d-flex justify-content-between align-items-center">
                             <div>
                                 <p class="text-secondary-custom mb-1 small">Posts Today</p>
-                                <h3 class="fw-bold mb-0 text-primary-custom">47</h3>
+                                <h3 class="fw-bold mb-0 text-primary-custom"><?php echo htmlspecialchars($modData['posts_today'] ?? 0); ?></h3>
                                 <small class="text-secondary-custom">Across all categories</small>
                             </div>
                             <div class="mod-stat-icon bg-light-green text-primary-custom"><i class="bi bi-chat-dots-fill"></i></div>
@@ -174,7 +171,7 @@ $gender = $userExtra['gender'] ?? 'N/A';
                         <div class="d-flex justify-content-between align-items-center">
                             <div>
                                 <p class="text-secondary-custom mb-1 small">Actions Logged</p>
-                                <h3 class="fw-bold mb-0 text-primary-custom">18</h3>
+                                <h3 class="fw-bold mb-0 text-primary-custom"><?php echo htmlspecialchars($modData['actions_logged'] ?? 0); ?></h3>
                                 <small class="text-secondary-custom">This month</small>
                             </div>
                             <div class="mod-stat-icon bg-light-green text-primary-custom"><i class="bi bi-journal-check"></i></div>
@@ -183,7 +180,6 @@ $gender = $userExtra['gender'] ?? 'N/A';
                 </div>
             </div>
 
-            <!-- Quick Actions -->
             <div class="card card-custom mb-4">
                 <div class="card-header bg-white border-0 pt-4 pb-0">
                     <h5 class="fw-bold text-primary-custom">Quick Actions</h5>
@@ -214,7 +210,6 @@ $gender = $userExtra['gender'] ?? 'N/A';
                 </div>
             </div>
 
-            <!-- Recent Crisis Alerts -->
             <div class="row">
                 <div class="col-12">
                     <div class="card card-custom">
@@ -223,24 +218,38 @@ $gender = $userExtra['gender'] ?? 'N/A';
                             <a href="forum.php" class="btn btn-sm btn-primary-custom rounded-pill">View All</a>
                         </div>
                         <div class="card-body">
-                            <div class="alert-item bg-danger bg-opacity-10 d-flex align-items-center gap-3">
-                                <i class="bi bi-exclamation-triangle-fill text-danger fs-4"></i>
-                                <div class="flex-grow-1">
-                                    <strong class="d-block">Crisis Keyword Detected</strong>
-                                    <small class="text-secondary-custom">Post by <em>QuietMoon_3312</em> — flagged for immediate review · 12 min ago</small>
-                                </div>
-                                <a href="forum.php" class="btn btn-sm btn-danger">Review</a>
-                            </div>
-                            <div class="alert-item" style="background:#fff3cd;">
-                                <div class="d-flex align-items-center gap-3">
-                                    <i class="bi bi-flag-fill text-warning fs-4"></i>
-                                    <div class="flex-grow-1">
-                                        <strong class="d-block">User Reported Post</strong>
-                                        <small class="text-secondary-custom">Post by <em>StormCloud_1182</em> — reported by 3 users · 1 hour ago</small>
+
+                            <?php if (!empty($modData['recent_alerts'])): ?>
+                                <?php foreach ($modData['recent_alerts'] as $alert):
+                                    // بنحدد لو الأليرت خطير (أحمر) ولا تحذير عادي (أصفر) عشان نحافظ على الألوان اللي إنت عاملها
+                                    $isCritical = (isset($alert['severity']) && $alert['severity'] === 'Critical');
+                                    ?>
+                                    <?php if ($isCritical): ?>
+                                    <div class="alert-item bg-danger bg-opacity-10 d-flex align-items-center gap-3">
+                                        <i class="bi bi-exclamation-triangle-fill text-danger fs-4"></i>
+                                        <div class="flex-grow-1">
+                                            <strong class="d-block"><?php echo htmlspecialchars($alert['action'] ?? 'Crisis Keyword Detected'); ?></strong>
+                                            <small class="text-secondary-custom"><?php echo htmlspecialchars($alert['description'] ?? ''); ?> · <span dir="ltr"><?php echo date('M d, H:i', strtotime($alert['created_at'])); ?></span></small>
+                                        </div>
+                                        <a href="forum.php" class="btn btn-sm btn-danger">Review</a>
                                     </div>
-                                    <a href="forum.php" class="btn btn-sm btn-warning text-dark">Review</a>
-                                </div>
-                            </div>
+                                <?php else: ?>
+                                    <div class="alert-item" style="background:#fff3cd;">
+                                        <div class="d-flex align-items-center gap-3">
+                                            <i class="bi bi-flag-fill text-warning fs-4"></i>
+                                            <div class="flex-grow-1">
+                                                <strong class="d-block"><?php echo htmlspecialchars($alert['action'] ?? 'User Reported Post'); ?></strong>
+                                                <small class="text-secondary-custom"><?php echo htmlspecialchars($alert['description'] ?? ''); ?> · <span dir="ltr"><?php echo date('M d, H:i', strtotime($alert['created_at'])); ?></span></small>
+                                            </div>
+                                            <a href="forum.php" class="btn btn-sm btn-warning text-dark">Review</a>
+                                        </div>
+                                    </div>
+                                <?php endif; ?>
+                                <?php endforeach; ?>
+                            <?php else: ?>
+                                <p class="text-muted text-center py-3">No recent alerts.</p>
+                            <?php endif; ?>
+
                         </div>
                     </div>
                 </div>
