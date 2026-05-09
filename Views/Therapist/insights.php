@@ -1,25 +1,19 @@
 <?php
-require_once __DIR__ . '/../../Core/Validation.php';
-require_once __DIR__ . '/../../Core/Database.php';
 session_start();
-$method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
-if (empty($_SESSION['user_id'])) {
-    header('Location: ../Auth/login.php');
-    exit();
+require_once __DIR__ . '/../../Models/Repositories/TherapistRepository.php';
+
+$user_id = $_SESSION['user_id'];
+$therapistRepo = new TherapistRepository();
+
+// جلب قائمة المرضى للـ Select Box
+$myPatients = $therapistRepo->getMyPatients($user_id);
+
+// UC-19: مراجعة تقارير Mood Trends [cite: 149]
+$selectedPatientId = $_GET['moodPatientSelect'] ?? null;
+$moodData = [];
+if ($selectedPatientId) {
+    $moodData = $therapistRepo->getPatientMoodEntries($selectedPatientId);
 }
-checkMethod($method);
-if ($_SESSION['role'] !== 'Therapist') {
-    $map = [
-        'Admin'     => '../Admin/dashboard.php',
-        'Patient'   => '../Patient/dashboard.php',
-        'Moderator' => '../Moderator/dashboard.php',
-        ];
-        header('Location: ' . ($map[$_SESSION['role']] ?? '../Auth/login.php'));
-        exit();
-        }
-$email = $_SESSION['email'] ?? '';
-
-
 ?>
 <!DOCTYPE html>
 <html lang="en">

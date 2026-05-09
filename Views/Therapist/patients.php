@@ -1,25 +1,19 @@
 <?php
-require_once __DIR__ . '/../../Core/Validation.php';
-require_once __DIR__ . '/../../Core/Database.php';
 session_start();
-$method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
-if (empty($_SESSION['user_id'])) {
+require_once __DIR__ . '/../../Core/Validation.php';
+require_once __DIR__ . '/../../Models/Repositories/TherapistRepository.php';
+
+if (empty($_SESSION['user_id']) || $_SESSION['role'] !== 'Therapist') {
     header('Location: ../Auth/login.php');
     exit();
 }
-checkMethod($method);
-if ($_SESSION['role'] !== 'Therapist') {
-    $map = [
-        'Admin'     => '../Admin/dashboard.php',
-        'Patient'   => '../Patient/dashboard.php',
-        'Moderator' => '../Moderator/dashboard.php',
-        ];
-        header('Location: ' . ($map[$_SESSION['role']] ?? '../Auth/login.php'));
-        exit();
-        }
-$email = $_SESSION['email'] ?? '';
+$therapistRepo = new TherapistRepository();
+$myPatients = $therapistRepo->getMyPatients($_SESSION['user_id']);
 
-
+// UC-20: حفظ تغييرات الصلاحيات [cite: 162-163]
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['permission_data'])) {
+    // Logic لتحديث الـ Access Rules Repository
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">

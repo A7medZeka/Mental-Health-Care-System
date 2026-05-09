@@ -1,26 +1,31 @@
 <?php
-require_once __DIR__ . '/../../Core/Validation.php';
-require_once __DIR__ . '/../../Core/Database.php';
 session_start();
-$method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
-if (empty($_SESSION['user_id'])) {
+require_once __DIR__ . '/../../Core/Validation.php';
+require_once __DIR__ . '/../../Controllers/SessionController.php';
+require_once __DIR__ . '/../../Controllers/ClinicalNoteController.php';
+if (empty($_SESSION['user_id']) || $_SESSION['role'] !== 'Therapist') {
     header('Location: ../Auth/login.php');
     exit();
 }
-checkMethod($method);
-if ($_SESSION['role'] !== 'Therapist') {
-    $map = [
-        'Admin'     => '../Admin/dashboard.php',
-        'Patient'   => '../Patient/dashboard.php',
-        'Moderator' => '../Moderator/dashboard.php',
-        ];
-        header('Location: ' . ($map[$_SESSION['role']] ?? '../Auth/login.php'));
-        exit();
-        }
-$email = $_SESSION['email'] ?? '';
+$user_id = $_SESSION['user_id'];
+$sessionCtrl = new SessionController();
+$noteCtrl = new ClinicalNoteController();
 
+// UC-16: حفظ ملحوظة جديدة (Versioning)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['noteContent'])) {
+    $sessionId = $_POST['session_id'] ?? 1;
+    $noteCtrl->saveNote($sessionId, $user_id, $_POST['noteContent']);
+}
 
+// جلب تاريخ الملحوظات للجلسة الحالية
+$currentSessionId = 1;
+$noteHistory = $noteCtrl->getVersionHistory($currentSessionId);
+
+// UC-13: التحكم في الـ Check-in من خلال الـ Session Controller
 ?>
+<!DOCTYPE html>
+<html lang="en">
+...
 <!DOCTYPE html>
 <html lang="en">
 <head>

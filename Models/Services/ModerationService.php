@@ -1,18 +1,27 @@
 <?php
 // Models/Services/ModerationService.php
 
+require_once __DIR__ . '/../../Core/SingletonDatabase.php';
+require_once __DIR__ . '/../ModerationLog.php'; // 1. استدعاء الكلاس لتحقيق علاقة (appends to)
+
 class ModerationService {
-    private $postRepo;
-    private $crisisService;
-    private $db;
-    public function __construct(PostRepository $postRepo, CrisisService $crisisService) {
+    private PostRepository $postRepo;
+    private ModeratorRepository $modRepo;
+    private CrisisService $crisisService;
+
+    // 2. تحقيق علاقة (uses) المباشرة: تعريف المتغير كـ SingletonDatabase
+    private SingletonDatabase $db;
+
+    public function __construct(PostRepository $postRepo, ModeratorRepository $modRepo, CrisisService $crisisService) {
         $this->postRepo = $postRepo;
+        $this->modRepo = $modRepo;
         $this->crisisService = $crisisService;
-        // بنجيب الاتصال من السنجلتون عشان الـ Logging
-        $this->db = SingletonDatabase::getInstance()->getConnection();
+
+        // استخدام الـ Singleton نفسه زي ما الرسمة طالبة بدل استخراج الـ PDO
+        $this->db = SingletonDatabase::getInstance();
     }
 
-    // 1. كودك القديم (لم يتم لمسه نهائياً لضمان عدم تأثر الأجزاء المرتبطة به)
+    // الدالة القديمة (شغالة زي ما هي عشان لو بتنادي عليها في مكان)
     public function handleFlaggedPost(int $postId, string $content) {
         if ($this->crisisService->detectSevereCrisis($content)) {
             $this->postRepo->markAsCritical($postId);
@@ -23,38 +32,73 @@ class ModerationService {
         return 'under_review';
     }
 
-    // =========================================================================
-    // الإضافات الجديدة بناءً على الـ Class Diagram وعلاقة الـ Log
-    // =========================================================================
-
-    /**
-     * تنفيذ علاقة "resolveFlag" من الدياجرام
-     * وعلاقة "Appends to" مع الـ ModerationLog
-     */
     public function resolveFlag(int $postId, string $action, int $modId, string $note = '') {
-        // أ. تحديث حالة البوست في المستودع (Repository)
-        $this->postRepo->updatePostStatus($postId, $action);
+        $this->modRepo->evaluatePost($postId, $action);
 
-        // ب. تسجيل العملية في الـ ModerationLog (علاقة Appends to)
-        // ده بيحقق الـ WORM compliance اللي في السيستم
-        $stmt = $this->db->prepare("
-            INSERT INTO moderation_logs (post_id, moderator_id, action_taken, note) 
-            VALUES (?, ?, ?, ?)
-        ");
-        return $stmt->execute([$postId, $modId, $action, $note]);
+        // 3. تحقيق علاقة (appends to) بإنشاء الكائن برمجياً قبل الحفظ
+        $log = new ModerationLog([
+            'post_id' => $postId,
+            'moderator_id' => $modId,
+            'action_taken' => $action,
+            'note' => $note
+        ]);
+
+        // استخدام دالة execute المدمجة في الـ Singleton
+        $sql = "INSERT INTO moderation_logs (post_id, moderator_id, action_taken, note) VALUES (?, ?, ?, ?)";
+        $this->db->execute($sql, [
+            $log->getPostId(),
+            $log->getModeratorId(),
+            $log->getActionTaken(),
+            $log->getNote()
+        ]);
+
+        return true;
     }
 
-    /**
-     * تنفيذ دالة جلب قائمة المراجعة من الدياجرام
-     */
+    // الدالة القديمة (شغالة ومتربطة صح بالـ ForumPost)
+    public function evaluateAndTransition(int $postId, string $newStatus, string $note = ''): bool {
+        $postData = $this->postRepo->getPostById($postId);
+
+        if (!$postData) {
+            throw new Exception("Post not found for evaluation.");
+        }
+
+        $post = new ForumPost($postData);
+
+        if ($post->transition($newStatus)) {
+            $finalStatus = $post->getState();
+
+            $success = $this->modRepo->evaluatePost($postId, $finalStatus);
+
+            if ($success) {
+                $modId = $_SESSION['user_id'] ?? 0;
+                $this->resolveFlag($postId, $finalStatus, $modId, "Evaluated as: " . $note);
+            }
+
+            return $success;
+        }
+        throw new Exception("Evaluation Error: Invalid state transition to '{$newStatus}' from current state.");
+    }
+
     public function getModerationQueue(): array {
-        return $this->postRepo->getFlaggedPosts();
+        return $this->postRepo->getFlaggedPosts(); // مطابقة للـ UML
     }
 
-    /**
-     * تنفيذ دالة حذف البوست من الدياجرام
-     */
     public function removePost(int $postId): bool {
-        return $this->postRepo->deletePost($postId);
+        return $this->postRepo->deletePost($postId); // مطابقة للـ UML
+    }
+
+    // ==========================================================
+    // 4. إضافة الدوال المطابقة للـ UML بالضبط (بدون كسر السيستم)
+    // ==========================================================
+
+    public function reviewPost(int $postId): void {
+        // بتنادي على اللوجيك بتاع المراجعة
+        $this->postRepo->markAsUnderReview($postId);
+    }
+
+    public function flagPost(int $postId, string $reason): void {
+        // بتشغل اللوجيك القديم عشان منكررش الأكواد (DRY Principle)
+        $this->handleFlaggedPost($postId, $reason);
     }
 }

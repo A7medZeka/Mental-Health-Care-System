@@ -65,7 +65,7 @@ class PostRepository {
         return $stmt->execute([$postId]);
     }
     public function deletePost(int $postId): bool {
-        $stmt = $this->db->prepare("UPDATE community_posts SET is_flagged = 1 WHERE post_id = ?");
+        $stmt = $this->db->prepare("DELETE FROM community_posts WHERE post_id = ?");
         return $stmt->execute([$postId]);
     }
 }

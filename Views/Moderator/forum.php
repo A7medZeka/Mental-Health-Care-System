@@ -1,13 +1,31 @@
 <?php
 require_once __DIR__ . '/../../Models/Repositories/PostRepository.php';
+// 1. السطر الجديد اللي كان ناقص
+require_once __DIR__ . '/../../Models/Repositories/ModeratorRepository.php';
 require_once __DIR__ . '/../../Models/Services/CrisisService.php';
 require_once __DIR__ . '/../../Models/Services/NotificationService.php';
 require_once __DIR__ . '/../../Models/Services/ModerationService.php';
+
+// 2. تجهيز الـ Repositories
 $repo = new PostRepository();
+$modRepo = new ModeratorRepository(); //
+
+// 3. تجهيز الـ Crisis Service
 $crisis = new CrisisService(new NotificationService());
-$modService = new ModerationService($repo, $crisis);
+
+/** * 4. الربط الصحيح بالترتيب الجديد:
+ * الترتيب هو: (PostRepository, ModeratorRepository, CrisisService)
+ */
+$modService = new ModerationService($repo, $modRepo, $crisis);
+
 $flaggedPosts = $modService->getModerationQueue();
-if (empty($flaggedPosts));
+
+// 5. تصحيح جملة الـ if (شيلنا السيميكولون الزيادة عشان الكود يشتغل)
+if (empty($flaggedPosts)) {
+    echo "No posts awaiting moderation.";
+} else {
+    // كود عرض المنشورات هنا
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">

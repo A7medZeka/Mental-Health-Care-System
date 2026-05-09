@@ -1,55 +1,68 @@
 <?php
 require_once __DIR__ . '/User.php';
-require_once __DIR__ . '/../Interfaces/TherapistRepositoryInterface.php';
-require_once __DIR__ . '/../Interfaces/TherapistPatientInsightInterface.php';
+require_once __DIR__ . '/Observers/TherapistObserver.php';
+require_once __DIR__ . '/ModerationLog.php';
+require_once __DIR__ . '/TherapistMatch.php';
+require_once __DIR__ . '/Appointment.php'; // ربط كلاس المواعيد الجديد
 
-class Therapist extends User implements TherapistRepositoryInterface, TherapistPatientInsightInterface {
-    
-    public function __construct() {
+class Therapist extends User {
+    private int $therapist_id;
+    private string $specialization;
+    private string $languages;
+    private string $license_status;
+    private $license_expiry_date;
+    private int $experience_years;
+    private float $rating;
+    private float $hourly_rate;
+    private string $availability_schedule;
+    private bool $is_verified;
+
+    // العلاقات القديمة المحفوظة (متبوظش القديم)
+    private TherapistObserver $observer;
+    private array $moderation_logs = [];
+    private array $therapist_matches = [];
+
+    // ==========================================================
+    // تحقيق علاقة الـ 0..* (accepts) الموضحة في الرسمة
+    // ==========================================================
+    private array $appointments = [];
+
+    public function __construct(array $data = []) {
         parent::__construct();
+        if (!empty($data)) {
+            $this->therapist_id = (int) ($data['therapist_id'] ?? 0);
+            $this->specialization = $data['specialization'] ?? '';
+            $this->languages = $data['languages'] ?? '';
+            $this->license_status = $data['license_status'] ?? '';
+            $this->license_expiry_date = $data['license_expiry_date'] ?? null;
+            $this->experience_years = (int) ($data['experience_years'] ?? 0);
+            $this->rating = (float) ($data['rating'] ?? 0.0);
+            $this->hourly_rate = (float) ($data['hourly_rate'] ?? 0.0);
+            $this->availability_schedule = $data['availability_schedule'] ?? '';
+            $this->is_verified = (bool) ($data['is_verified'] ?? false);
+        }
+        $this->observer = new TherapistObserver($this->therapist_id);
     }
-    
-    public function getMyPatients($therapist_id) {
-        $stmt = $this->conn->prepare("SELECT * FROM users WHERE assigned_therapist = ? AND role = 'Patient' ORDER BY last_name, first_name");
-        $stmt->execute([$therapist_id]);
-        return $stmt->fetchAll();
+
+    // دوال المواعيد الجديدة (الربط الجديد)
+    public function addAppointment(Appointment $appointment): void {
+        $this->appointments[] = $appointment;
     }
-    
-    public function getPatientSessions($patient_id) {
-        $stmt = $this->conn->prepare("SELECT * FROM sessions WHERE patient_id = ? ORDER BY session_date DESC");
-        $stmt->execute([$patient_id]);
-        return $stmt->fetchAll();
+
+    public function getAppointments(): array {
+        return $this->appointments;
     }
-    
-    public function createSession($patient_id, $therapist_id, $session_date, $session_type) {
-        $stmt = $this->conn->prepare("INSERT INTO sessions (patient_id, therapist_id, session_date, session_type, status) VALUES (?, ?, ?, ?, 'Scheduled')");
-        return $stmt->execute([$patient_id, $therapist_id, $session_date, $session_type]);
-    }
-    
-    public function updateSessionNotes($session_id, $notes) {
-        $stmt = $this->conn->prepare("UPDATE sessions SET notes = ?, status = 'Completed' WHERE session_id = ?");
-        return $stmt->execute([$notes, $session_id]);
-    }
-    
-    public function getTherapistSchedule($therapist_id) {
-        $stmt = $this->conn->prepare("SELECT * FROM sessions WHERE therapist_id = ? AND session_date >= CURDATE() ORDER BY session_date ASC");
-        $stmt->execute([$therapist_id]);
-        return $stmt->fetchAll();
-    }
-    
-    public function getTherapistStats($therapist_id) {
-        $stmt = $this->conn->prepare("SELECT 
-            COUNT(*) as total_sessions,
-            COUNT(CASE WHEN status = 'Completed' THEN 1 END) as completed_sessions,
-            COUNT(CASE WHEN status = 'Scheduled' THEN 1 END) as upcoming_sessions
-            FROM sessions WHERE therapist_id = ?");
-        $stmt->execute([$therapist_id]);
-        return $stmt->fetch();
-    }
-    
-    public function getPatientMoodEntries($patient_id, $limit = 10) {
-        $stmt = $this->conn->prepare("SELECT * FROM mood_entries WHERE patient_id = ? ORDER BY entry_date DESC LIMIT ?");
-        $stmt->execute([$patient_id, $limit]);
-        return $stmt->fetchAll();
-    }
+
+    // الحفاظ على الـ Getters القديمة
+    public function getTherapistId(): int { return $this->therapist_id; }
+    public function getSpecialization(): string { return $this->specialization; }
+    public function getLanguages(): string { return $this->languages; }
+    public function getExperienceYears(): int { return $this->experience_years; }
+    public function getRating(): float { return $this->rating; }
+
+    // الحفاظ على دوال العلاقات السابقة
+    public function addModerationLog(ModerationLog $log): void { $this->moderation_logs[] = $log; }
+    public function getModerationLogs(): array { return $this->moderation_logs; }
+    public function addTherapistMatch(TherapistMatch $match): void { $this->therapist_matches[] = $match; }
+    public function getTherapistMatches(): array { return $this->therapist_matches; }
 }

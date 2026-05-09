@@ -1,38 +1,47 @@
 <?php
-require_once __DIR__ . '/../../Core/Validation.php';
-require_once __DIR__ . '/../../Core/Database.php';
 session_start();
-$method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
-if (empty($_SESSION['user_id'])) {
+require_once __DIR__ . '/../../Core/Validation.php';
+require_once __DIR__ . '/../../Core/SingletonDatabase.php';
+require_once __DIR__ . '/../../Core/ImmutablePattern.php';
+require_once __DIR__ . '/../../Models/Repositories/TherapistRepository.php';
+
+// التأكد من الهوية (Authentication)
+if (empty($_SESSION['user_id']) || $_SESSION['role'] !== 'Therapist') {
     header('Location: ../Auth/login.php');
     exit();
 }
-checkMethod($method);
-if ($_SESSION['role'] !== 'Therapist') {
-    $map = [
-        'Admin'     => '../Admin/dashboard.php',
-        'Patient'   => '../Patient/dashboard.php',
-        'Moderator' => '../Moderator/dashboard.php',
-    ];
-    header('Location: ' . ($map[$_SESSION['role']] ?? '../Auth/login.php'));
+
+$user_id = $_SESSION['user_id'];
+$therapistRepo = new TherapistRepository();
+$userFactory = new ImmutableUserFactory();
+
+// 1. جلب بيانات الثيرابيست (Immutable Object)
+$therapistObj = $userFactory->createTherapistFromId($user_id);
+
+if (!$therapistObj) {
+    header('Location: ../Auth/logout.php');
     exit();
 }
-$role = $_SESSION['role'] ?? 'Therapist';
-$first_name = $_SESSION['first_name'] ?? 'Therapist';
-$last_name  = $_SESSION['last_name']  ?? '';
-$email = $_SESSION['email'] ?? '';
-$age = $_SESSION['age'] ?? '';
-$gender = $_SESSION['gender'] ?? '';
-$user_id = $_SESSION['user_id'];
-$conn = getConnection();
-$stmt = $conn->prepare("SELECT age FROM users WHERE user_id = ?");
-$stmt->execute([$user_id]);
-$user = $stmt->fetch();
-$age = $user['age'] ?? '';
-$stmt2 = $conn->prepare("SELECT gender FROM users WHERE user_id = ?");
-$stmt2->execute([$user_id]);
-$user2 = $stmt2->fetch();
-$gender = $user2['gender'] ?? '';
+
+// 2. تجهيز المتغيرات للـ View (نفس الأسماء اللي الفرونت إند مستنيها)
+$first_name = $therapistObj->getFirstName();
+$last_name  = $therapistObj->getLastName();
+$role       = $therapistObj->getRole();
+$email      = $therapistObj->getEmail();
+$gender     = $_SESSION['gender'] ?? 'N/A';
+
+// 3. جلب الإحصائيات (بعد ما صلحنا الـ JOIN والـ session_state)
+$stats = $therapistRepo->getTherapistStats($user_id);
+$age = $_SESSION['age'] ?? 'N/A'; // السن من السيشن أو من كائن الثيرابيست
+
+// 4. UC-14: جلب جدول المواعيد الحقيقي
+$todaySchedule = $therapistRepo->getTherapistSchedule($user_id);
+
+// 5. UC-17: معالجة بلاغات الحالات الحرجة
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['welfareActionType'])) {
+    $action = $_POST['welfareActionType'];
+    $notes  = $_POST['welfareNotes'];
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">

@@ -3,14 +3,19 @@ session_start();
 require_once __DIR__ . '/../Core/Validation.php';
 require_once __DIR__ . '/../Core/SingletonDatabase.php';
 require_once __DIR__ . '/../Models/Repositories/PostRepository.php';
+// السطر الجديد عشان نربط الـ ModeratorRepository
+require_once __DIR__ . '/../Models/Repositories/ModeratorRepository.php';
 require_once __DIR__ . '/../Models/Services/NotificationService.php';
 require_once __DIR__ . '/../Models/Services/CrisisService.php';
 require_once __DIR__ . '/../Models/Services/ModerationService.php';
+
 class ModerationController {
     private $moderationService;
+
     public function __construct(ModerationService $modService) {
         $this->moderationService = $modService;
     }
+
     public function handleModerationAction() {
         $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
         if (!checkMethod($method) || empty($_SESSION['user_id']) || $_SESSION['role'] !== 'Moderator') {
@@ -25,6 +30,7 @@ class ModerationController {
             $this->updatePostState($action);
         }
     }
+
     public function escalatePost() {
         $postId = filter_input(INPUT_POST, 'post_id', FILTER_VALIDATE_INT);
         $content = trim($_POST['content'] ?? '');
@@ -48,26 +54,48 @@ class ModerationController {
         }
         exit();
     }
+
     private function updatePostState(string $action) {
         $postId = filter_input(INPUT_POST, 'post_id', FILTER_VALIDATE_INT);
         $note = trim($_POST['note'] ?? '');
+
         if (!$postId) {
             exit(json_encode(['success' => false, 'error' => 'Missing post ID']));
         }
+
         try {
-            $this->moderationService->updatePostStatus($postId, $action, $note);
-            echo json_encode(['success' => true, 'status' => $action]);
+            // استدعاء دالة التقييم المرتبطة بالـ State Machine وعلاقة Evaluates
+            $this->moderationService->evaluateAndTransition($postId, $action, $note);
+
+            echo json_encode([
+                'success' => true,
+                'status' => $action,
+                'message' => 'Post evaluation completed successfully'
+            ]);
         } catch (Exception $e) {
             echo json_encode(['success' => false, 'error' => $e->getMessage()]);
         }
         exit();
     }
 }
+
+// =========================================================================
+// التعديل في منطقة الـ Bootstrap بالأسفل:
+// =========================================================================
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $db = SingletonDatabase::getInstance()->getConnection();
+
+    // 1. إنشاء الـ Repositories
     $repo = new PostRepository();
+    $modRepo = new ModeratorRepository(); // إضافة الكلاس الجديد
+
+    // 2. إنشاء الـ Services
     $crisis = new CrisisService(new NotificationService());
-    $modService = new ModerationService($repo, $crisis);
+
+    // 3. حقن التبعيات (Dependency Injection) بالترتيب الجديد للـ Constructor
+    $modService = new ModerationService($repo, $modRepo, $crisis);
+
+    // 4. تشغيل الـ Controller
     $controller = new ModerationController($modService);
     $controller->handleModerationAction();
 }

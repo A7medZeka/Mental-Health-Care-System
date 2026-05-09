@@ -1,37 +1,41 @@
 <?php
 require_once __DIR__ . '/../../Core/Validation.php';
 require_once __DIR__ . '/../../Core/Database.php';
+require_once __DIR__ . '/../../Models/Dashboard.php';
+
 session_start();
-$method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
+
 if (empty($_SESSION['user_id'])) {
     header('Location: ../Auth/login.php');
     exit();
 }
-checkMethod($method);
+
 if ($_SESSION['role'] !== 'Moderator') {
     $map = [
-        'Admin'     => '../Admin/dashboard.php',
-        'Therapist' => '../Therapist/dashboard.php',
-        'Patient'   => '../Patient/dashboard.php',
+            'Admin'     => '../Admin/dashboard.php',
+            'Therapist' => '../Therapist/dashboard.php',
+            'Patient'   => '../Patient/dashboard.php',
     ];
     header('Location: ' . ($map[$_SESSION['role']] ?? '../Auth/login.php'));
     exit();
 }
+
+$dashboard = new Dashboard();
+$modData = $dashboard->getModeratorDashboardData();
+$user_id = $_SESSION['user_id'];
 $role = $_SESSION['role'] ?? 'Moderator';
 $first_name = $_SESSION['first_name'] ?? 'Moderator';
 $last_name  = $_SESSION['last_name']  ?? '';
-$email = $_SESSION['email'] ?? '';
-$age = $_SESSION['age'] ?? '';
-$user_id = $_SESSION['user_id'];
+
 $conn = getConnection();
-$stmt = $conn->prepare("SELECT age FROM users WHERE user_id = ?");
+
+// جلب البيانات الإضافية (السن والنوع) من قاعدة البيانات
+$stmt = $conn->prepare("SELECT age, gender FROM users WHERE user_id = ?");
 $stmt->execute([$user_id]);
-$user = $stmt->fetch();
-$age = $user['age'] ?? '';
-$stmt2 = $conn->prepare("SELECT gender FROM users WHERE user_id = ?");
-$stmt2->execute([$user_id]);
-$user2 = $stmt2->fetch();
-$gender = $user2['gender'] ?? '';
+$userExtra = $stmt->fetch(PDO::FETCH_ASSOC);
+
+$age = $userExtra['age'] ?? 'N/A';
+$gender = $userExtra['gender'] ?? 'N/A';
 ?>
 <!DOCTYPE html>
 <html lang="en">
