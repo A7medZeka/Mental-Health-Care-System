@@ -13,7 +13,7 @@ class User implements UserRepositoryInterface {
     protected $created_at;
     protected $phone_number;
     protected $city;
-    protected $nationalID;
+    protected $national_id;
     protected $username;
     protected $first_name;
     protected $last_name;

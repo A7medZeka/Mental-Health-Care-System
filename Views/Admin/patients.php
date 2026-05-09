@@ -327,7 +327,19 @@ document.getElementById('uploadIntakeBtn').addEventListener('click', async funct
         form.append('patient_id', patientId);
         form.append('intakeFile', fileInput.files[0]);
 
-        const data = await fetch('patients.php', { method: 'POST', body: form }).then(r => r.json());
+        const response = await fetch('patients.php', { 
+            method: 'POST', 
+            body: form,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        const data = await response.json();
 
         if (data.success) {
             fileInput.value     = '';
@@ -338,8 +350,22 @@ document.getElementById('uploadIntakeBtn').addEventListener('click', async funct
 
         showToast(data.message, data.success ? 'success' : 'danger');
 
-    } catch {
-        showToast('Network error. Please try again.', 'danger');
+    } catch (error) {
+        console.error('Upload error:', error);
+        let errorMessage = 'Network error. Please try again.';
+        
+        if (error.message.includes('HTTP 404')) {
+            errorMessage = 'Upload endpoint not found. Please contact administrator.';
+        } else if (error.message.includes('HTTP 500')) {
+            errorMessage = 'Server error. Please try again later.';
+        } else if (error.message.includes('HTTP 403')) {
+            errorMessage = 'Access denied. Please login again.';
+        } else if (error.message.includes('Failed to fetch')) {
+            errorMessage = 'Network connection failed. Check your internet connection.';
+        }
+        
+        feedback.innerHTML = `<span class="text-danger"><i class="bi bi-x-circle me-1"></i>${errorMessage}</span>`;
+        showToast(errorMessage, 'danger');
     } finally {
         this.disabled  = false;
         this.innerHTML = '<i class="bi bi-upload me-2"></i>Upload File';

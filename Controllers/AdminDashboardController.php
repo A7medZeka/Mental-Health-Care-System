@@ -148,22 +148,75 @@ class AdminDashboardController {
     private function handleUploadIntake(): void {
         header('Content-Type: application/json');
 
-        $patientId = filter_input(INPUT_POST, 'patient_id', FILTER_VALIDATE_INT);
+        try {
+            // Enable error reporting for debugging
+            error_reporting(E_ALL);
+            ini_set('display_errors', 0); // Don't display errors in JSON response
+            
+            $patientId = filter_input(INPUT_POST, 'patient_id', FILTER_VALIDATE_INT);
 
-        if (!$patientId) {
-            echo json_encode(['success' => false, 'message' => 'Invalid patient ID.']);
+            if (!$patientId) {
+                echo json_encode(['success' => false, 'message' => 'Invalid patient ID.']);
+                exit();
+            }
+
+            // Check file upload
+            if (!isset($_FILES['intakeFile'])) {
+                echo json_encode(['success' => false, 'message' => 'No file uploaded.']);
+                exit();
+            }
+
+            if ($_FILES['intakeFile']['error'] !== UPLOAD_ERR_OK) {
+                $uploadErrors = [
+                    UPLOAD_ERR_INI_SIZE   => 'File exceeds upload_max_filesize directive.',
+                    UPLOAD_ERR_FORM_SIZE  => 'File exceeds MAX_FILE_SIZE directive.',
+                    UPLOAD_ERR_PARTIAL    => 'File was only partially uploaded.',
+                    UPLOAD_ERR_NO_FILE    => 'No file was uploaded.',
+                    UPLOAD_ERR_NO_TMP_DIR => 'Missing temporary folder.',
+                    UPLOAD_ERR_CANT_WRITE => 'Failed to write file to disk.',
+                    UPLOAD_ERR_EXTENSION  => 'File upload stopped by extension.',
+                ];
+                
+                $errorMessage = $uploadErrors[$_FILES['intakeFile']['error']] ?? 'Unknown upload error.';
+                echo json_encode(['success' => false, 'message' => 'Upload error: ' . $errorMessage]);
+                exit();
+            }
+
+            // Check session
+            if (empty($_SESSION['user_id'])) {
+                echo json_encode(['success' => false, 'message' => 'Session expired. Please login again.']);
+                exit();
+            }
+
+            // Ensure patient manager is initialized
+            if (!$this->patientManager) {
+                echo json_encode(['success' => false, 'message' => 'Patient manager not initialized.']);
+                exit();
+            }
+
+            // Perform upload
+            error_log("[Upload] Starting upload - Patient ID: $patientId, User ID: " . $_SESSION['user_id'] . ", File: " . $_FILES['intakeFile']['name']);
+            
+            try {
+                $result = $this->patientManager->uploadIntakeForm($patientId, $_FILES['intakeFile'], $_SESSION['user_id']);
+                error_log("[Upload] Upload completed successfully: " . json_encode($result));
+            } catch (Exception $e) {
+                error_log("[Upload] Upload failed with exception: " . $e->getMessage());
+                $result = ['success' => false, 'message' => 'Upload failed: ' . $e->getMessage()];
+            }
+            
+            echo json_encode($result);
+            exit();
+
+        } catch (Exception $e) {
+            error_log('[AdminDashboardController] Upload error: ' . $e->getMessage());
+            echo json_encode(['success' => false, 'message' => 'Server error: ' . $e->getMessage()]);
+            exit();
+        } catch (Error $e) {
+            error_log('[AdminDashboardController] Upload fatal error: ' . $e->getMessage());
+            echo json_encode(['success' => false, 'message' => 'Server error occurred.']);
             exit();
         }
-
-        if (!isset($_FILES['intakeFile']) || $_FILES['intakeFile']['error'] !== UPLOAD_ERR_OK) {
-            echo json_encode(['success' => false, 'message' => 'No file uploaded or upload error.']);
-            exit();
-        }
-
-        echo json_encode(
-            $this->patientManager->uploadIntakeForm($patientId, $_FILES['intakeFile'], $_SESSION['user_id'])
-        );
-        exit();
     }
 
     // =========================================================================

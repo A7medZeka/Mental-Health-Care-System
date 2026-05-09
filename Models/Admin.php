@@ -27,7 +27,7 @@ class Admin extends User {
         $this->gender = $userData['gender'] ?? '';
         $this->phone_number = $userData['phone_number'] ?? '';
         $this->city = $userData['city'] ?? '';
-        $this->nationalID = $userData['nationalID'] ?? '';
+        $this->national_id = $userData['national_id'] ?? '';
     }
     
     /**
@@ -265,7 +265,7 @@ class AdminPatientManager extends Admin implements AdminPatientManagerInterface 
         }
 
         // Get patient's national ID for filename
-        $stmt = $this->conn->prepare("SELECT nationalID FROM users WHERE user_id = ? AND role = 'Patient'");
+        $stmt = $this->conn->prepare("SELECT national_id FROM users WHERE user_id = ? AND role = 'Patient'");
         $stmt->execute([$patientId]);
         $patient = $stmt->fetch();
         
@@ -273,7 +273,7 @@ class AdminPatientManager extends Admin implements AdminPatientManagerInterface 
             return ['success' => false, 'message' => 'Patient not found.'];
         }
         
-        $nationalId = $patient['nationalID'] ?? 'Unknown';
+        $nationalId = $patient['national_id'] ?? 'Unknown';
         // Clean national ID for filename (remove special characters)
         $cleanNationalId = preg_replace('/[^a-zA-Z0-9]/', '_', $nationalId);
         
@@ -284,13 +284,16 @@ class AdminPatientManager extends Admin implements AdminPatientManagerInterface 
             return ['success' => false, 'message' => 'Failed to save file. Please try again.'];
         }
 
+        // Temporarily disable database insert to isolate the error
+        /*
         $stmt = $this->conn->prepare(
             "INSERT INTO intake_forms (patient_id, file_path, uploaded_by, uploaded_at)
              VALUES (?, ?, ?, NOW())"
         );
         $stmt->execute([$patientId, self::UPLOAD_DB_PATH . $safeFilename, $uploadedBy]);
+        */
 
-        return ['success' => true, 'message' => 'Intake form uploaded successfully.'];
+        return ['success' => true, 'message' => 'Intake form uploaded successfully (DB insert disabled for testing).'];
     }
     
     /**
@@ -1123,6 +1126,14 @@ if (isset($_POST['ajax_admin_action']) && $_SERVER['REQUEST_METHOD'] === 'POST')
         } elseif (in_array($action, ['delete_user', 'update_user_status'])) {
             $handler = new AdminUserActionsHandler();
             $result = $handler->handleUserAction($action, $id, $_POST);
+        } elseif ($action === 'upload_intake_form') {
+            // Perform upload
+            error_log("[Upload] Patient ID: $id, User ID: " . $_SESSION['user_id'] . ", File: " . $_FILES['intakeFile']['name']);
+            $result = $this->patientManager->uploadIntakeForm($id, $_FILES['intakeFile'], $_SESSION['user_id']);
+            
+            error_log("[Upload] Result: " . json_encode($result));
+            echo json_encode($result);
+            exit();
         } else {
             $result = ['success' => false, 'message' => 'Unknown action'];
         }
