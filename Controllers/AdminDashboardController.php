@@ -21,6 +21,40 @@ class AdminDashboardController {
         $this->patientManager = new AdminPatientManager();
         $this->rbacManager    = new AdminRBACManager();
     }
+    
+    /**
+     * Initialize admin managers with current user session data
+     */
+    private function initializeAdminManagers(): void {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        
+        if (!empty($_SESSION['user_id'])) {
+            $userData = [
+                'user_id' => $_SESSION['user_id'],
+                'role' => $_SESSION['role'] ?? '',
+                'username' => $_SESSION['username'] ?? '',
+                'email' => $_SESSION['email'] ?? '',
+                'first_name' => $_SESSION['first_name'] ?? '',
+                'last_name' => $_SESSION['last_name'] ?? '',
+                'age' => $_SESSION['age'] ?? '',
+                'gender' => $_SESSION['gender'] ?? '',
+                'phone_number' => $_SESSION['phone_number'] ?? '',
+                'city' => $_SESSION['city'] ?? '',
+                'nationalID' => $_SESSION['national_id'] ?? ''
+            ];
+            
+            // Initialize managers with session data
+            if (method_exists($this->patientManager, 'setCurrentUser')) {
+                $this->patientManager->setCurrentUser($userData);
+            }
+            
+            if (method_exists($this->rbacManager, 'setCurrentUser')) {
+                $this->rbacManager->setCurrentUser($userData);
+            }
+        }
+    }
 
     // =========================================================================
     // Entry point
@@ -35,6 +69,9 @@ class AdminDashboardController {
 
         $this->requireLogin();
         $this->requireAdminRole();
+        
+        // Initialize admin managers with session data
+        $this->initializeAdminManagers();
 
         if ($method === 'POST') {
             $this->handlePost();

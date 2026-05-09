@@ -569,8 +569,10 @@ async function executeAction(action, id, rowType) {
         showToast(res.success ? 'success' : 'danger', res.message);
 
         if (res.success) {
-            const rowId = `therapist-row-${id}`;
-            document.getElementById(rowId)?.remove();
+            // Refresh the page to show updated data instead of just removing the row
+            setTimeout(() => {
+                window.location.reload();
+            }, 1500);
         }
     } catch (err) {
         showToast('danger', 'Request failed: ' + err.message);
@@ -616,7 +618,12 @@ async function submitRenew() {
         const data = await res.json();
         renewModal.hide();
         showToast(data.success ? 'success' : 'danger', data.message);
-        if (data.success) document.getElementById(`therapist-row-${id}`)?.remove();
+        if (data.success) {
+            // Refresh the page to show updated therapist status instead of removing the row
+            setTimeout(() => {
+                window.location.reload();
+            }, 1500);
+        }
     } catch (err) {
         showToast('danger', 'Renewal failed: ' + err.message);
     }

@@ -5,16 +5,16 @@ $controller = new AdminDashboardController();
 $dashboardData = $controller->handleRequest();
 $userData = $controller->getUserData();
 
-$role = $userData['role'];
-$first_name = $userData['first_name'];
-$last_name = $userData['last_name'];
-$email = $userData['email'];
-$age = $userData['age'];
-$gender = $userData['gender'];
+$role = $userData['role'] ?? 'Admin';
+$first_name = $userData['first_name'] ?? '';
+$last_name = $userData['last_name'] ?? '';
+$email = $userData['email'] ?? '';
+$age = $userData['age'] ?? 'N/A';
+$gender = $userData['gender'] ?? 'N/A';
 
-$totalPatients = $dashboardData['total_patients'];
-$totalTherapists = $dashboardData['total_therapists'];
-$high_risk_alert = $dashboardData['high_risk_alerts'];
+$totalPatients = $dashboardData['total_patients'] ?? 0;
+$totalTherapists = $dashboardData['total_therapists'] ?? 0;
+$high_risk_alert = $dashboardData['high_risk_alerts'] ?? 0;
 
 ?>
 

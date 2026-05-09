@@ -14,6 +14,23 @@ class Admin extends User {
     }
     
     /**
+     * Set current user data from session
+     */
+    public function setCurrentUser(array $userData): void {
+        $this->user_id = $userData['user_id'] ?? 0;
+        $this->role = $userData['role'] ?? '';
+        $this->username = $userData['username'] ?? '';
+        $this->email = $userData['email'] ?? '';
+        $this->first_name = $userData['first_name'] ?? '';
+        $this->last_name = $userData['last_name'] ?? '';
+        $this->age = $userData['age'] ?? '';
+        $this->gender = $userData['gender'] ?? '';
+        $this->phone_number = $userData['phone_number'] ?? '';
+        $this->city = $userData['city'] ?? '';
+        $this->nationalID = $userData['nationalID'] ?? '';
+    }
+    
+    /**
      * Get admin profile information using User variables
      * @return array
      */
@@ -116,7 +133,7 @@ class AdminPatientManager extends Admin implements AdminPatientManagerInterface 
 
     private const MAX_FILE_SIZE  = 5 * 1024 * 1024;
     private const ALLOWED_MIME   = 'application/pdf';
-    private const UPLOAD_DIR     = __DIR__ . '/../Views/Admin/uploads/intake/';
+    private const UPLOAD_DIR     = __DIR__ . '/../uploads/intake/';
     private const UPLOAD_DB_PATH = 'uploads/intake/';
 
     public function getTotalPatients(): int {
@@ -247,7 +264,20 @@ class AdminPatientManager extends Admin implements AdminPatientManagerInterface 
             return ['success' => false, 'message' => 'Server error: could not create upload directory.'];
         }
 
-        $safeFilename = sprintf('intake_%d_%d.pdf', $patientId, time());
+        // Get patient's national ID for filename
+        $stmt = $this->conn->prepare("SELECT nationalID FROM users WHERE user_id = ? AND role = 'Patient'");
+        $stmt->execute([$patientId]);
+        $patient = $stmt->fetch();
+        
+        if (!$patient) {
+            return ['success' => false, 'message' => 'Patient not found.'];
+        }
+        
+        $nationalId = $patient['nationalID'] ?? 'Unknown';
+        // Clean national ID for filename (remove special characters)
+        $cleanNationalId = preg_replace('/[^a-zA-Z0-9]/', '_', $nationalId);
+        
+        $safeFilename = sprintf('%d_%s.pdf', $patientId, $cleanNationalId);
         $destination  = self::UPLOAD_DIR . $safeFilename;
 
         if (!move_uploaded_file($file['tmp_name'], $destination)) {
@@ -962,7 +992,7 @@ class AdminTherapistActionsHandler extends AdminTherapistManager {
         ];
     }
     
-    }
+}
 
 // =============================================================================
 // USER ACTIONS HANDLER – all user management actions from admin

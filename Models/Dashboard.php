@@ -98,9 +98,20 @@ class Dashboard
         $patientManager   = new AdminPatientManager();
         $therapistManager = new AdminTherapistManager();
 
+        // Get high risk alerts count
+        $conn = SingletonDatabase::getInstance()->getConnection();
+        $highRiskStmt = $conn->prepare("
+            SELECT COUNT(*) as cnt 
+            FROM users 
+            WHERE role = 'Patient' AND status = 'High Risk'
+        ");
+        $highRiskStmt->execute();
+        $highRiskAlerts = $highRiskStmt->fetchColumn();
+
         return [
             'total_patients'   => $patientManager->getTotalPatients(),
             'total_therapists' => $therapistManager->getTotalTherapists(),
+            'high_risk_alerts' => (int)$highRiskAlerts,
             'system_health'    => 'Optimal'
         ];
     }
