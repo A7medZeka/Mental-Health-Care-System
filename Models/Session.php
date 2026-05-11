@@ -2,8 +2,7 @@
 // Models/Session.php
 require_once __DIR__ . '/../Interfaces/IStateMachine.php';
 require_once __DIR__ . '/Therapist.php';
-require_once __DIR__ . '/ClinicalNote.php'; // ربط كلاس الملحوظات
-
+require_once __DIR__ . '/ClinicalNote.php';
 class Session implements IStateMachine {
     private int $session_id;
     private int $appointment_id;
@@ -11,14 +10,7 @@ class Session implements IStateMachine {
     private $actual_start_time;
     private $actual_end_time;
     private string $session_state;
-
-    // 1. علاقة الـ Association القديمة (Session contains Therapist)
     private ?Therapist $therapist;
-
-    // ==========================================================
-    // 2. تحقيق الـ Composition (المعين الأسود) Label: "has"
-    // التعددية هي 0..* يعني الجلسة الواحدة ليها قائمة ملحوظات
-    // ==========================================================
     private array $clinicalNotes = [];
 
     public function __construct(array $data = [], ?Therapist $therapist = null) {
