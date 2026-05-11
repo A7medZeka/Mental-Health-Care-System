@@ -11,20 +11,11 @@ class Dashboard
     {
         $this->userModel = new User();
     }
-
-    /**
-     * 1. ملخص بيانات لوحة تحكم المشرف (Moderator)
-     * يعتمد على الـ PostRepository لتطبيق مبدأ الـ SOLID
-     */
     public function getModeratorDashboardData(): array
     {
         $postRepo = new PostRepository();
         $conn = SingletonDatabase::getInstance()->getConnection();
-
-        // أ. جلب عدد المنشورات المنتظرة للمراجعة (Flagged)
         $flaggedCount = count($postRepo->getFlaggedPosts());
-
-        // ب. جلب عدد تنبيهات الأزمات بناءً على كلمات دلالية (Crisis Alerts)
         $crisisStmt = $conn->prepare("
             SELECT COUNT(*) as cnt 
             FROM community_posts 
@@ -33,8 +24,6 @@ class Dashboard
         ");
         $crisisStmt->execute();
         $crisisCount = (int)($crisisStmt->fetch(PDO::FETCH_ASSOC)['cnt'] ?? 0);
-
-        // ج. جلب عدد العمليات التي تمت في آخر شهر (Actions Logged)
         $logStmt = $conn->prepare("
             SELECT COUNT(*) as cnt 
             FROM moderation_logs 
@@ -50,16 +39,10 @@ class Dashboard
             'total_today'    => 47 // رقم افتراضي أو يمكن حسابه بـ Count للمنشورات اليومية
         ];
     }
-
-    /**
-     * 2. ملخص بيانات لوحة تحكم المريض (Patient)
-     */
     public function getPatientDashboardData(int $userId): array
     {
         $conn = SingletonDatabase::getInstance()->getConnection();
         $userData = $this->userModel->getUserById($userId);
-
-        // موعد الجلسة القادم
         $apptStmt = $conn->prepare("
             SELECT a.appointment_date, u.first_name, u.last_name
             FROM   appointments a
@@ -70,13 +53,9 @@ class Dashboard
         ");
         $apptStmt->execute([$userId]);
         $nextAppt = $apptStmt->fetch(PDO::FETCH_ASSOC);
-
-        // حالة المزاج اليوم
         $moodStmt = $conn->prepare("SELECT mood_label, mood_score FROM mood_entries WHERE patient_id = ? AND entry_date = CURDATE()");
         $moodStmt->execute([$userId]);
         $todayMood = $moodStmt->fetch(PDO::FETCH_ASSOC);
-
-        // حساب نسبة الإنجاز في الـ Onboarding
         $progress = $this->calculateOnboardingProgress($userId, $conn);
 
         return [
@@ -88,13 +67,8 @@ class Dashboard
             'onboarding_progress' => $progress,
         ];
     }
-
-    /**
-     * 3. ملخص بيانات لوحة تحكم المدير (Admin)
-     */
     public function getAdminDashboardData(): array
     {
-        // AdminPatientManager و AdminTherapistManager هي كلاسات مساعدة للـ Admin
         $patientManager   = new AdminPatientManager();
         $therapistManager = new AdminTherapistManager();
 
@@ -104,15 +78,10 @@ class Dashboard
             'system_health'    => 'Optimal'
         ];
     }
-
-    /**
-     * دالة مساعدة لحساب تقدم المريض في إعداد حسابه
-     */
     private function calculateOnboardingProgress(int $userId, $conn): int
     {
         $hasIntake = (bool)$conn->query("SELECT 1 FROM intake_forms WHERE patient_id = $userId LIMIT 1")->fetch();
         $hasSigned = (bool)$conn->query("SELECT 1 FROM consents WHERE patient_id = $userId AND signed_date IS NOT NULL LIMIT 1")->fetch();
-
         $completedSteps = 1 + ($hasIntake ? 1 : 0) + ($hasSigned ? 1 : 0);
         return (int)round(($completedSteps / 3) * 100);
     }

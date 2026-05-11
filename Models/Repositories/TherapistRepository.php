@@ -2,14 +2,11 @@
 require_once __DIR__ . '/../../Core/SingletonDatabase.php';
 require_once __DIR__ . '/../../Interfaces/TherapistRepositoryInterface.php';
 require_once __DIR__ . '/../../Interfaces/TherapistPatientInsightInterface.php';
-
 class TherapistRepository implements TherapistRepositoryInterface, TherapistPatientInsightInterface {
     private $db;
-
     public function __construct() {
         $this->db = SingletonDatabase::getInstance()->getConnection();
     }
-
     public function getMyPatients($therapist_id) {
         $stmt = $this->db->prepare("
             SELECT u.* FROM users u 
@@ -22,7 +19,6 @@ class TherapistRepository implements TherapistRepositoryInterface, TherapistPati
         $stmt->execute([$therapist_id]);
         return $stmt->fetchAll();
     }
-
     public function getPatientSessions($patient_id) {
         $stmt = $this->db->prepare("
             SELECT s.*, a.appointment_date 
@@ -34,17 +30,12 @@ class TherapistRepository implements TherapistRepositoryInterface, TherapistPati
         $stmt->execute([$patient_id]);
         return $stmt->fetchAll();
     }
-
-    // تصحيح: إنشاء موعد ثم جلسة ليتوافق مع الـ SQL والـ Interface
     public function createSession($patient_id, $therapist_id, $session_date, $session_type) {
         try {
             $this->db->beginTransaction();
-            // 1. إنشاء الموعد أولاً
             $stmt1 = $this->db->prepare("INSERT INTO appointments (patient_id, therapist_id, appointment_date, session_type, status) VALUES (?, ?, ?, ?, 'Scheduled')");
             $stmt1->execute([$patient_id, $therapist_id, $session_date, $session_type]);
             $appointment_id = $this->db->lastInsertId();
-
-            // 2. إنشاء الجلسة وربطها بالموعد
             $stmt2 = $this->db->prepare("INSERT INTO sessions (appointment_id, session_state) VALUES (?, 'Scheduled')");
             $stmt2->execute([$appointment_id]);
 
@@ -55,13 +46,11 @@ class TherapistRepository implements TherapistRepositoryInterface, TherapistPati
             return false;
         }
     }
-
-    // تصحيح: استخدام session_state بدل status
+    //correction use session_state instead of status
     public function completeSession($session_id) {
         $stmt = $this->db->prepare("UPDATE sessions SET session_state = 'Completed' WHERE session_id = ?");
         return $stmt->execute([$session_id]);
     }
-
     public function getTherapistSchedule($therapist_id) {
         $stmt = $this->db->prepare("
             SELECT s.*, a.appointment_date, u.first_name, u.last_name
@@ -75,7 +64,6 @@ class TherapistRepository implements TherapistRepositoryInterface, TherapistPati
         $stmt->execute([$therapist_id]);
         return $stmt->fetchAll();
     }
-
     public function getTherapistStats($therapist_id) {
         $stmt = $this->db->prepare("SELECT 
             COUNT(*) as total_sessions,
@@ -87,7 +75,6 @@ class TherapistRepository implements TherapistRepositoryInterface, TherapistPati
         $stmt->execute([$therapist_id]);
         return $stmt->fetch();
     }
-
     public function getPatientMoodEntries($patient_id, $limit = 10) {
         $stmt = $this->db->prepare("SELECT * FROM mood_entries WHERE patient_id = ? ORDER BY entry_date DESC LIMIT ?");
         $stmt->execute([$patient_id, $limit]);

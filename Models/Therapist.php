@@ -3,8 +3,7 @@ require_once __DIR__ . '/User.php';
 require_once __DIR__ . '/Observers/TherapistObserver.php';
 require_once __DIR__ . '/ModerationLog.php';
 require_once __DIR__ . '/TherapistMatch.php';
-require_once __DIR__ . '/Appointment.php'; // ربط كلاس المواعيد الجديد
-
+require_once __DIR__ . '/Appointment.php';
 class Therapist extends User {
     private int $therapist_id;
     private string $specialization;

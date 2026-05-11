@@ -2,14 +2,11 @@
 require_once __DIR__ . '/../../Core/Validation.php';
 require_once __DIR__ . '/../../Core/Database.php';
 require_once __DIR__ . '/../../Models/Dashboard.php';
-
 session_start();
-
 if (empty($_SESSION['user_id'])) {
     header('Location: ../Auth/login.php');
     exit();
 }
-
 if ($_SESSION['role'] !== 'Moderator') {
     $map = [
             'Admin'     => '../Admin/dashboard.php',
@@ -19,16 +16,13 @@ if ($_SESSION['role'] !== 'Moderator') {
     header('Location: ' . ($map[$_SESSION['role']] ?? '../Auth/login.php'));
     exit();
 }
-
 $dashboard = new Dashboard();
 $modData = $dashboard->getModeratorDashboardData();
 $user_id = $_SESSION['user_id'];
 $role = $_SESSION['role'] ?? 'Moderator';
 $first_name = $_SESSION['first_name'] ?? 'Moderator';
 $last_name  = $_SESSION['last_name']  ?? '';
-
 $conn = getConnection();
-
 // جلب البيانات الإضافية (السن والنوع) من قاعدة البيانات
 $stmt = $conn->prepare("SELECT age, gender FROM users WHERE user_id = ?");
 $stmt->execute([$user_id]);
