@@ -15,8 +15,6 @@ class ForumPost implements IStateMachine {
     private string $status;
     private $created_at;
     private array $replies = [];
-
-    // علاقة الـ Composition
     private ?Therapist $assigned_therapist;
 
     public function __construct(array $data, ?Therapist $therapist = null) {
@@ -34,10 +32,6 @@ class ForumPost implements IStateMachine {
 
         $this->assigned_therapist = $therapist;
     }
-
-    // ==========================================
-    // دوال إدارة حالة المنشور (State Machine)
-    // ==========================================
     public function transition(string $newState): bool {
         $allowedTransitions = [
             'Published'    => ['Hidden', 'Flagged'],
@@ -52,18 +46,10 @@ class ForumPost implements IStateMachine {
         }
         return false;
     }
-
-    // ==========================================
-    // دوال الارتباط (Composition & Replies)
-    // ==========================================
     public function getAssignedTherapist(): ?Therapist { return $this->assigned_therapist; }
     public function assignTherapist(Therapist $therapist): void { $this->assigned_therapist = $therapist; }
     public function addReply(ForumPost $reply): void { $this->replies[] = $reply; }
     public function getReplies(): array { return $this->replies; }
-
-    // ==========================================
-    // Getters لجميع المتغيرات (لإنهاء مشكلة unused)
-    // ==========================================
     public function getPostId(): int { return $this->post_id; }
     public function getParentPostId(): int { return $this->parent_post_id; }
     public function getUserId(): int { return $this->user_id; }

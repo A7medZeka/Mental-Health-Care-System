@@ -15,7 +15,6 @@ require_once __DIR__ . '/../../Core/SingletonDatabase.php';
 require_once __DIR__ . '/../Therapist.php';
 require_once __DIR__ . '/../TherapistMatch.php';
 require_once __DIR__ . '/../TherapistMatchDetails.php';
-
 class MatchingService {
     private SingletonDatabase $db;
 
@@ -40,7 +39,6 @@ class MatchingService {
         }
         return $therapists;
     }
-
     /**
      * @param Therapist[] $candidates
      * @return array
@@ -48,11 +46,8 @@ class MatchingService {
     public function rankTherapists(array $candidates, Patient $patient): array {
         $ranked = [];
         foreach ($candidates as $therapist) {
-
-            // 1. استخدام دالة الدعم لإنشاء التفاصيل (populates)
             $details = $this->populateMatchDetails($therapist, $patient);
             $score = $details->getTotalWeightedScore();
-
             $ranked[] = [
                 'therapist'  => $therapist,
                 'details'    => $details, // تخزين التفاصيل
@@ -65,8 +60,6 @@ class MatchingService {
         });
         return $ranked;
     }
-
-    // دالة مساعدة خاصة (Private) لتعبئة تفاصيل التوافق (populates)
     private function populateMatchDetails(Therapist $therapist, Patient $patient): TherapistMatchDetails {
         $spec_score = 0.0;
         $lang_score = 0.0;
@@ -78,8 +71,6 @@ class MatchingService {
         if (stripos($therapist->getLanguages(), $patient->getPrefLanguage()) !== false) {
             $lang_score = 100.0; // 100 * 0.20 = 20
         }
-
-        // يُغذي (populates) الكلاس البرتقالي بالتفاصيل
         return new TherapistMatchDetails([
             'specialization_score' => $spec_score,
             'language_score'       => $lang_score,
@@ -88,22 +79,14 @@ class MatchingService {
             'cultural_score'       => 0.0
         ]);
     }
-
     public function computeMatchScore(Therapist $therapist, Patient $patient): float {
-        // الاعتماد على الكلاس المخصص للحسابات
         $details = $this->populateMatchDetails($therapist, $patient);
         return $details->getTotalWeightedScore();
     }
-
-    /**
-     * 2. يُنتج (produces) كائن التوافق النهائي
-     * ملاحظة: تم تغيير نوع الإرجاع (Return Type) من array إلى ?TherapistMatch لمطابقة الـ UML
-     */
     public function selectBestMatch(array $ranked): ?TherapistMatch {
         if (empty($ranked)) {
             return null; // لا يوجد معالجين
         }
-
         $best = $ranked[0];
         $bestTherapist = $best['therapist'];
         $bestDetails   = $best['details'];

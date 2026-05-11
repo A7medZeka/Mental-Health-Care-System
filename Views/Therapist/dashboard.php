@@ -4,8 +4,6 @@ require_once __DIR__ . '/../../Core/Validation.php';
 require_once __DIR__ . '/../../Core/SingletonDatabase.php';
 require_once __DIR__ . '/../../Core/ImmutablePattern.php';
 require_once __DIR__ . '/../../Models/Repositories/TherapistRepository.php';
-
-// التأكد من الهوية (Authentication)
 if (empty($_SESSION['user_id']) || $_SESSION['role'] !== 'Therapist') {
     header('Location: ../Auth/login.php');
     exit();
@@ -131,46 +129,48 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['welfareActionType']))
                 </div>
 
                 <!-- Action Required: High-Risk No-Show (UC-17) -->
-                <div class="row mb-4" id="incidentDashboardUI">
-                    <div class="col-12">
-                        <div class="alert alert-danger d-flex align-items-start border-0 shadow-sm p-4" role="alert">
-                            <i class="bi bi-exclamation-triangle-fill fs-1 me-4"></i>
-                            <div class="w-100">
-                                <h4 class="alert-heading fw-bold mb-2">URGENT: Patient No-Show Detected</h4>
-                                <p class="mb-3 text-dark">Patient <strong>PT-1055 (High Risk)</strong> has not checked in for their scheduled session after the grace period. Please select a welfare action immediately.</p>
-                                
-                                <!-- Therapist Welfare Options -->
-                                <div class="bg-white p-3 rounded shadow-sm">
-                                    <h6 class="fw-bold text-danger mb-3">Welfare Options (Incident #1055-A)</h6>
-                                    
-                                    <div class="mb-3">
-                                        <label class="form-label fw-semibold">Select Action to Log:</label>
-                                        <select class="form-select" id="welfareActionType" name="welfareActionType">
-                                            <option value="call_patient">Called Patient Directly</option>
-                                            <option value="call_emergency_contact">Contacted Emergency Contact</option>
-                                            <option value="escalate_authorities">Escalated to Local Authorities</option>
-                                        </select>
-                                    </div>
-                                    <div class="mb-3">
-                                        <label class="form-label fw-semibold">Action Notes:</label>
-                                        <textarea class="form-control" id="welfareNotes" rows="2" placeholder="Detail the outcome of the action..." name="welfareNotes"></textarea>
-                                    </div>
-                                    
-                                    <div class="d-flex gap-2 flex-wrap mt-3 pt-3 border-top">
-                                        <!-- Main Scenario -->
-                                        <button class="btn btn-danger px-4" id="btnLogAction">Submit Action & Save Log</button>
-                                        
-                                        <!-- Alt Scenarios -->
-                                        <div class="ms-auto d-flex gap-2">
-                                            <button class="btn btn-outline-warning text-dark" id="btnPatientLate">Patient Joined Late (Override)</button>
-                                            <button class="btn btn-outline-secondary" id="btnFalseAlarm">Mark as False Alarm</button>
+                <?php
+                $hasNoShowIncident = $therapistRepo->checkNoShow($user_id);
+                if ($hasNoShowIncident):
+                    ?>
+                    <div class="row mb-4" id="incidentDashboardUI">
+                        <div class="col-12">
+                            <form method="POST" action="dashboard.php" class="alert alert-danger d-flex align-items-start border-0 shadow-sm p-4" role="alert">
+                                <i class="bi bi-exclamation-triangle-fill fs-1 me-4"></i>
+                                <div class="w-100">
+                                    <h4 class="alert-heading fw-bold mb-2">URGENT: Patient No-Show Detected</h4>
+                                    <p class="mb-3 text-dark">Patient <strong>PT-1055 (High Risk)</strong> has not checked in for their scheduled session after the grace period. Please select a welfare action immediately.</p>
+
+                                    <div class="bg-white p-3 rounded shadow-sm">
+                                        <h6 class="fw-bold text-danger mb-3">Welfare Options (Incident #1055-A)</h6>
+
+                                        <div class="mb-3">
+                                            <label class="form-label fw-semibold">Select Action to Log:</label>
+                                            <select class="form-select" id="welfareActionType" name="welfareActionType">
+                                                <option value="call_patient">Called Patient Directly</option>
+                                                <option value="call_emergency_contact">Contacted Emergency Contact</option>
+                                                <option value="escalate_authorities">Escalated to Local Authorities</option>
+                                            </select>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label fw-semibold">Action Notes:</label>
+                                            <textarea class="form-control" id="welfareNotes" rows="2" placeholder="Detail the outcome of the action..." name="welfareNotes"></textarea>
+                                        </div>
+
+                                        <div class="d-flex gap-2 flex-wrap mt-3 pt-3 border-top">
+                                            <button type="submit" class="btn btn-danger px-4" id="btnLogAction">Submit Action & Save Log</button>
+
+                                            <div class="ms-auto d-flex gap-2">
+                                                <button type="button" class="btn btn-outline-warning text-dark" id="btnPatientLate">Patient Joined Late (Override)</button>
+                                                <button type="button" class="btn btn-outline-secondary" id="btnFalseAlarm">Mark as False Alarm</button>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
+                            </form>
                         </div>
                     </div>
-                </div>
+                <?php endif; ?>
 
                 <!-- Today's Schedule Overview -->
                 <div class="row">
@@ -191,16 +191,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['welfareActionType']))
                                             </tr>
                                         </thead>
                                         <tbody id="dashboardScheduleBody">
-                                            <tr id="sessionRow_PT1055">
-                                                <td class="px-4 py-3 fw-semibold">09:00 AM</td>
-                                                <td class="px-4 py-3 text-danger fw-bold">PT-1055 (High Risk)</td>
-                                                <td class="px-4 py-3"><span class="badge bg-danger" id="statusBadge_PT1055">No-Show</span></td>
-                                            </tr>
+                                        <?php foreach ($todaySchedule as $row): ?>
                                             <tr>
-                                                <td class="px-4 py-3 fw-semibold">10:00 AM</td>
-                                                <td class="px-4 py-3">Jane Doe</td>
-                                                <td class="px-4 py-3"><span class="badge bg-secondary">Scheduled</span></td>
+                                                <td class="px-4 py-3 fw-semibold"><?php echo date('h:i A', strtotime($row['appointment_date'])); ?></td>
+                                                <td class="px-4 py-3"><?php echo $row['first_name'] . ' ' . $row['last_name']; ?></td>
+                                                <td class="px-4 py-3">
+                                                    <span class="badge <?php echo $row['session_state'] === 'Scheduled' ? 'bg-secondary' : 'bg-success'; ?>">
+                                                        <?php echo $row['session_state']; ?>
+                                                    </span>
+                                                </td>
                                             </tr>
+                                        <?php endforeach; ?>
                                         </tbody>
                                     </table>
                                 </div>

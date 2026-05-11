@@ -1,8 +1,7 @@
 <?php
 // Models/Appointment.php
 require_once __DIR__ . '/../Interfaces/IStateMachine.php';
-require_once __DIR__ . '/Payment.php'; // ربط كلاس الدفع
-
+require_once __DIR__ . '/Payment.php';
 class Appointment implements IStateMachine {
     private int $appointment_id;
     private int $patient_id;
@@ -10,13 +9,7 @@ class Appointment implements IStateMachine {
     private string $appointment_date;
     private string $status;
     private string $session_type;
-
-    // ==========================================================
-    // تحقيق علاقة الـ Aggregation المسمى بـ "billed via"
-    // المعين الأبيض في الرسمة يعني الموعد "يحتوي" على تفاصيل دفع
-    // ==========================================================
     private ?Payment $payment;
-
     public function __construct(array $data = [], ?Payment $payment = null) {
         $this->appointment_id   = (int) ($data['appointment_id'] ?? 0);
         $this->patient_id       = (int) ($data['patient_id'] ?? 0);
@@ -28,17 +21,12 @@ class Appointment implements IStateMachine {
         // ربط الدفع بالموعد
         $this->payment = $payment;
     }
-
-    // دالة لربط الدفع لاحقاً (مثلاً بعد إتمام الجلسة)
     public function setPayment(Payment $payment): void {
         $this->payment = $payment;
     }
-
     public function getPayment(): ?Payment {
         return $this->payment;
     }
-
-    // الحفاظ على دوال الـ State Machine
     public function getState(): string { return $this->status; }
     public function transition(string $newState): bool {
         $allowed = ['Scheduled' => ['Confirmed', 'Cancelled'], 'Confirmed' => ['Completed', 'Cancelled']];
@@ -48,7 +36,6 @@ class Appointment implements IStateMachine {
         }
         return false;
     }
-
     public function getAppointmentId(): int { return $this->appointment_id; }
     public function getTherapistId(): int { return $this->therapist_id; }
 }

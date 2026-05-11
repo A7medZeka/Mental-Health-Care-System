@@ -18,6 +18,37 @@ class Patient extends User implements
     PatientProfileInterface,
     PatientIntakeInterface
 {
+    // new edit i did not put setters cause you have already updatePreferences so you dont need it
+    // but if there is a problem try to put setters
+    protected $pref_language;
+    protected $pref_specialization;
+
+    public function getPrefLanguage() {
+        return $this->pref_language;
+    }
+
+    public function getPrefSpecialization() {
+        return $this->pref_specialization;
+    }
+
+    // This method loads the preferences from your 'patients' database table
+    public function loadPatientData($patient_id) {
+        $stmt = $this->conn->prepare(
+            "SELECT pref_language, pref_specialization 
+             FROM patients 
+             WHERE patient_id = ?"
+        );
+        $stmt->execute([$patient_id]);
+        $data = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($data) {
+            $this->user_id = $patient_id;
+            $this->pref_language = $data['pref_language'];
+            $this->pref_specialization = $data['pref_specialization'];
+            return true;
+        }
+        return false;
+    }
     private function toImmutable(array $row): ImmutablePatientRecord
     {
         return new ImmutablePatientRecord(

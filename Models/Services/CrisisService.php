@@ -16,7 +16,6 @@ require_once __DIR__ . '/../AuditLog.php';
 class CrisisService {
     private $db;
     private NotificationService $notifier;
-
     public function __construct(NotificationService $notifier) {
         $this->db = SingletonDatabase::getInstance()->getConnection();
         $this->notifier = $notifier;
@@ -66,7 +65,6 @@ class CrisisService {
             $userId
         ]);
     }
-
     public function scanKeywords(string $text, array $dictionary): string {
         $text = strtolower($text);
         foreach ($dictionary as $word) {

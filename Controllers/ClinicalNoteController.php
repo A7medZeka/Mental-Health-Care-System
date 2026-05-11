@@ -1,24 +1,4 @@
 <?php
-// Controllers/ClinicalNoteController.php
-
-/**
- * ClinicalNoteController — UC 3: Encrypt Patient Intake Documents.
- *
- * SD flow:
- *   Admin → ClinicalNoteController.saveNote(sessionId, therapistId, content)
- *     → SD Step 1: checkFileType(content) [EDIT: added missing validation]
- *     → SD Step 2: encryptNote(content)
- *     → SD Step 3: determine version number
- *     → SD Step 4: create ClinicalNote (immutable)
- *     → SD Step 5: persist to DB
- *
- *   Therapist → getLatestNote(sessionId)
- *     → return ClinicalNote (encrypted)
- *
- *   Therapist → getVersionHistory(sessionId)
- *     → return ClinicalNote[]
- */
-
 require_once __DIR__ . '/../Core/SingletonDatabase.php';
 require_once __DIR__ . '/../Models/ClinicalNote.php';
 
@@ -33,8 +13,8 @@ class ClinicalNoteController {
     }
 
     /**
-     * SD Step 1 [EDIT: added missing validation]:
-     * +checkFileType(content) : Boolean
+     * SD Step 1:
+     * +checkFileType(content, mimeType) : Boolean
      * Validates that the content is not empty and is of an acceptable type.
      */
     public function checkFileType(string $content, string $mimeType = 'text/plain'): bool {
@@ -79,7 +59,7 @@ class ClinicalNoteController {
         $sqlInsert = "INSERT INTO clinical_notes (session_id, therapist_id, encrypted_content, version_no, created_at) VALUES (?, ?, ?, ?, ?)";
         $this->db->execute($sqlInsert, [
             $note->getSessionId(),
-            $therapistId,
+            $note->getTherapistId(),   // fixed: use getter instead of raw $therapistId
             $note->getEncryptedContent(),
             $note->getVersionNo(),
             $note->getCreatedAt()

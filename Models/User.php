@@ -22,7 +22,9 @@ class User implements UserRepositoryInterface {
     public function __construct() {
         $this->conn = SingletonDatabase::getInstance()->getConnection();
     }
-    
+    public function getUserId() {
+        return $this->user_id;
+    }
     public function getUserById($user_id) {
         $stmt = $this->conn->prepare("SELECT * FROM users WHERE user_id = ?");
         $stmt->execute([$user_id]);

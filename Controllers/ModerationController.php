@@ -3,12 +3,10 @@ session_start();
 require_once __DIR__ . '/../Core/Validation.php';
 require_once __DIR__ . '/../Core/SingletonDatabase.php';
 require_once __DIR__ . '/../Models/Repositories/PostRepository.php';
-// السطر الجديد عشان نربط الـ ModeratorRepository
 require_once __DIR__ . '/../Models/Repositories/ModeratorRepository.php';
 require_once __DIR__ . '/../Models/Services/NotificationService.php';
 require_once __DIR__ . '/../Models/Services/CrisisService.php';
 require_once __DIR__ . '/../Models/Services/ModerationService.php';
-
 class ModerationController {
     private $moderationService;
 
