@@ -256,17 +256,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['welfareActionType']))
                                             </tr>
                                         </thead>
                                         <tbody id="dashboardScheduleBody">
-                                        <?php foreach ($todaySchedule as $row): ?>
+                                        <?php if (!empty($todaySchedule)): ?>
+                                            <?php foreach ($todaySchedule as $row): ?>
+                                                <tr>
+                                                    <td class="px-4 py-3 fw-semibold"><?php echo date('h:i A', strtotime($row['appointment_date'])); ?></td>
+                                                    <td class="px-4 py-3"><?php echo htmlspecialchars($row['first_name'] . ' ' . $row['last_name']); ?></td>
+                                                    <td class="px-4 py-3">
+                <span class="badge <?php echo $row['session_state'] === 'Scheduled' ? 'bg-secondary' : 'bg-success'; ?>">
+                    <?php echo $row['session_state']; ?>
+                </span>
+                                                    </td>
+                                                </tr>
+                                            <?php endforeach; ?>
+                                        <?php else: ?>
                                             <tr>
-                                                <td class="px-4 py-3 fw-semibold"><?php echo date('h:i A', strtotime($row['appointment_date'])); ?></td>
-                                                <td class="px-4 py-3"><?php echo $row['first_name'] . ' ' . $row['last_name']; ?></td>
-                                                <td class="px-4 py-3">
-                                                    <span class="badge <?php echo $row['session_state'] === 'Scheduled' ? 'bg-secondary' : 'bg-success'; ?>">
-                                                        <?php echo $row['session_state']; ?>
-                                                    </span>
-                                                </td>
+                                                <td colspan="3" class="text-center py-4 text-muted">No appointments scheduled for today.</td>
                                             </tr>
-                                        <?php endforeach; ?>
+                                        <?php endif; ?>
                                         </tbody>
                                     </table>
                                 </div>
