@@ -93,4 +93,10 @@ class ClinicalNoteController {
         }
         return $history;
     }
+    public function decryptNote(string $encryptedContent): string {
+        // بما أنك استخدمت base64_encode عند الحفظ
+        // يجب استخدام base64_decode هنا لاسترجاع النص
+        if (empty($encryptedContent)) return "";
+        return htmlspecialchars(base64_decode($encryptedContent));
+    }
 }

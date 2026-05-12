@@ -51,16 +51,17 @@ class TherapistRepository implements TherapistRepositoryInterface, TherapistPati
         $stmt = $this->db->prepare("UPDATE sessions SET session_state = 'Completed' WHERE session_id = ?");
         return $stmt->execute([$session_id]);
     }
+    // TherapistRepository.php
     public function getTherapistSchedule($therapist_id) {
         $stmt = $this->db->prepare("
-            SELECT s.*, a.appointment_date, u.first_name, u.last_name
-            FROM sessions s 
-            JOIN appointments a ON s.appointment_id = a.appointment_id 
-            JOIN users u ON a.patient_id = u.user_id
-            WHERE a.therapist_id = ? 
-              AND a.appointment_date >= CURDATE() 
-            ORDER BY a.appointment_date ASC
-        ");
+        SELECT s.*, a.appointment_date, u.first_name, u.last_name
+        FROM sessions s 
+        JOIN appointments a ON s.appointment_id = a.appointment_id 
+        JOIN users u ON a.patient_id = u.user_id
+        WHERE a.therapist_id = ? 
+          AND DATE(a.appointment_date) = CURDATE() -- تأكد من استخدام DATE() للمقارنة اليومية
+        ORDER BY a.appointment_date ASC
+    ");
         $stmt->execute([$therapist_id]);
         return $stmt->fetchAll();
     }
@@ -98,16 +99,18 @@ class TherapistRepository implements TherapistRepositoryInterface, TherapistPati
         $stmt = $this->db->prepare("UPDATE sessions SET notes = ?, session_state = 'Completed' WHERE session_id = ?");
         return $stmt->execute([$notes, $session_id]);
     }
+    // TherapistRepository.php
     public function getMoodSleepCorrelation($patient_id) {
         $stmt = $this->db->prepare("
-            SELECT 
-                AVG(mood_score) as avg_mood, 
-                AVG(sleep_hours) as avg_sleep,
-                (AVG(mood_score * sleep_hours) - AVG(mood_score) * AVG(sleep_hours)) / 
-                (STDDEV(mood_score) * STDDEV(sleep_hours)) as correlation_coefficient
-            FROM mood_entries 
-            WHERE patient_id = ?
-        ");
+        SELECT 
+            AVG(mood_score) as avg_mood, 
+            AVG(sleep_hours) as avg_sleep,
+            -- Use NULLIF to prevent division by zero if STDDEV is 0
+            (AVG(mood_score * sleep_hours) - AVG(mood_score) * AVG(sleep_hours)) / 
+            NULLIF((STDDEV(mood_score) * STDDEV(sleep_hours)), 0) as correlation_coefficient
+        FROM mood_entries 
+        WHERE patient_id = ?
+    ");
         $stmt->execute([$patient_id]);
         return $stmt->fetch();
     }
