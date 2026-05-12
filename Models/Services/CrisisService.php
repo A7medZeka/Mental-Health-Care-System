@@ -80,13 +80,12 @@ class CrisisService {
         if ($this->scanKeywords($text, $highDict) !== '') return 'High';
         return 'Normal';
     }
-
     public function logCrisisEvent(int $userId, int $postId): void {
         $description = "Crisis event triggered for Post ID: $postId";
         $stmt = $this->db->prepare("
-            INSERT INTO audit_logs (action, severity, description, user_id) 
-            VALUES (?, ?, ?, ?)
-        ");
-        $stmt->execute(['System Auto-Flag', 'Critical', $description, $userId]);
+        INSERT INTO audit_logs (action, severity, description, handledBy, timestamp) 
+        VALUES (?, ?, ?, ?, NOW())
+    ");
+        $stmt->execute(['Crisis Alert', 'Critical', $description, $userId]);
     }
 }

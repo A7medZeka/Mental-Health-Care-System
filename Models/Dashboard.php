@@ -17,7 +17,6 @@ class Dashboard {
         $conn = SingletonDatabase::getInstance()->getConnection();
 
         $flaggedCount = count($postRepo->getFlaggedPosts());
-
         $crisisStmt = $conn->prepare("
             SELECT COUNT(*) as cnt 
             FROM community_posts 
@@ -34,12 +33,20 @@ class Dashboard {
         ");
         $logStmt->execute();
         $actionsLogged = (int)($logStmt->fetch(PDO::FETCH_ASSOC)['cnt'] ?? 0);
+        // جلب عدد المنشورات المنشورة اليوم فعلياً
+        $todayStmt = $conn->query("SELECT COUNT(*) FROM community_posts WHERE DATE(created_at) = CURDATE()");
+        $totalToday = (int)$todayStmt->fetchColumn();
+
+        // جلب عدد الحالات الخطيرة
+        $crisisStmt = $conn->prepare("SELECT COUNT(*) FROM community_posts WHERE is_flagged = 1 AND content REGEXP 'انتحار|اموت نفسي|suicide'");
+        $crisisStmt->execute();
+        $crisisCount = (int)$crisisStmt->fetchColumn();
 
         return [
             'flagged_posts'  => $flaggedCount,
             'crisis_alerts'  => $crisisCount,
             'actions_logged' => $actionsLogged,
-            'total_today'    => 47
+            'total_today'    => $totalToday
         ];
     }
 
