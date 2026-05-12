@@ -167,15 +167,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['welfareActionType']))
                     $patientName = htmlspecialchars($nextSession['first_name'] . ' ' . $nextSession['last_name']);
                     ?>
                     <div class="row mb-4">
-                        <div class="col-12">
-                            <div class="card card-custom border-warning border-start border-4">
-                                <div class="card-body py-3 d-flex align-items-center" id="reminderNotification">
-                                    <i class="bi bi-bell-fill text-warning fs-3 me-3"></i>
-                                    <div>
-                                        <h6 class="fw-bold mb-1">System Reminder: Upcoming Session</h6>
-                                        <p class="mb-0 text-secondary-custom small">You have a scheduled session with <strong><?php echo $patientName; ?></strong> in <?php echo $timeDiff; ?> minutes.</p>
-                                    </div>
-                                    <button class="btn btn-sm btn-outline-secondary ms-auto" onclick="this.closest('.card').remove();">Dismiss</button>
+                        <div class="col-md-4">
+                            <div class="card bg-primary text-white shadow-sm border-0">
+                                <div class="card-body py-4">
+                                    <h6 class="text-white-50 small">Total Sessions</h6>
+                                    <h2 class="fw-bold mb-0"><?php echo $stats['total_sessions'] ?? 0; ?></h2>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card bg-success text-white shadow-sm border-0">
+                                <div class="card-body py-4">
+                                    <h6 class="text-white-50 small">Completed Sessions</h6>
+                                    <h2 class="fw-bold mb-0"><?php echo $stats['completed_sessions'] ?? 0; ?></h2>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card bg-info text-white shadow-sm border-0">
+                                <div class="card-body py-4">
+                                    <h6 class="text-white-50 small">Upcoming Sessions</h6>
+                                    <h2 class="fw-bold mb-0"><?php echo $stats['upcoming_sessions'] ?? 0; ?></h2>
                                 </div>
                             </div>
                         </div>

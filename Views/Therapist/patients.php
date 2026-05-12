@@ -5,7 +5,17 @@ require_once __DIR__ . '/../../Core/SingletonDatabase.php';
 require_once __DIR__ . '/../../Core/ImmutablePattern.php';
 require_once __DIR__ . '/../../Models/Repositories/TherapistRepository.php';
 require_once __DIR__ . '/../../Controllers/PermissionController.php';
+// Top of patients.php
+$selectedPatientId = $_GET['patient_id'] ?? null;
+$currentPermissions = [];
 
+if ($selectedPatientId) {
+    $stmt = SingletonDatabase::getInstance()->getConnection()->prepare(
+            "SELECT resource_id, is_allowed FROM resource_access_control WHERE patient_id = ?"
+    );
+    $stmt->execute([$selectedPatientId]);
+    $currentPermissions = $stmt->fetchAll(PDO::FETCH_KEY_PAIR); // Returns [resource_id => is_allowed]
+}
 // 1. التأمين (Authentication)
 if (empty($_SESSION['user_id']) || $_SESSION['role'] !== 'Therapist') {
     header('Location: ../Auth/login.php');
@@ -148,13 +158,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['patient_id'])) {
                                     <div class="list-group-item d-flex justify-content-between align-items-center py-3">
                                         <div>
                                             <h6 class="mb-1 fw-bold">Advanced CBT Worksheets</h6>
-                                            <small class="text-muted">Standard material (Level 1).</small>
                                         </div>
                                         <div class="form-check form-switch fs-4 mb-0">
-                                            <input class="form-check-input permission-toggle" type="checkbox" role="switch" name="permissions[1]" value="1" checked>
+                                            <input class="form-check-input" type="checkbox" name="permissions[1]"
+                                                    <?php echo (isset($currentPermissions[1]) && $currentPermissions[1]) ? 'checked' : ''; ?>>
                                         </div>
                                     </div>
-
                                     <div class="list-group-item d-flex justify-content-between align-items-center py-3">
                                         <div>
                                             <h6 class="mb-1 fw-bold">Trauma Recovery Guide (High-Risk)</h6>

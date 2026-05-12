@@ -98,16 +98,18 @@ class TherapistRepository implements TherapistRepositoryInterface, TherapistPati
         $stmt = $this->db->prepare("UPDATE sessions SET notes = ?, session_state = 'Completed' WHERE session_id = ?");
         return $stmt->execute([$notes, $session_id]);
     }
+    // TherapistRepository.php
     public function getMoodSleepCorrelation($patient_id) {
         $stmt = $this->db->prepare("
-            SELECT 
-                AVG(mood_score) as avg_mood, 
-                AVG(sleep_hours) as avg_sleep,
-                (AVG(mood_score * sleep_hours) - AVG(mood_score) * AVG(sleep_hours)) / 
-                (STDDEV(mood_score) * STDDEV(sleep_hours)) as correlation_coefficient
-            FROM mood_entries 
-            WHERE patient_id = ?
-        ");
+        SELECT 
+            AVG(mood_score) as avg_mood, 
+            AVG(sleep_hours) as avg_sleep,
+            -- Use NULLIF to prevent division by zero if STDDEV is 0
+            (AVG(mood_score * sleep_hours) - AVG(mood_score) * AVG(sleep_hours)) / 
+            NULLIF((STDDEV(mood_score) * STDDEV(sleep_hours)), 0) as correlation_coefficient
+        FROM mood_entries 
+        WHERE patient_id = ?
+    ");
         $stmt->execute([$patient_id]);
         return $stmt->fetch();
     }
