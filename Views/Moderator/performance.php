@@ -3,7 +3,7 @@ session_start();
 require_once __DIR__ . '/../../Core/Validation.php';
 require_once __DIR__ . '/../../Core/SingletonDatabase.php';
 
-// 1. حماية الصفحة
+// 1. Protect the page
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 if (empty($_SESSION['user_id'])) {
     header('Location: ../Auth/login.php');
@@ -22,7 +22,7 @@ if ($_SESSION['role'] !== 'Moderator') {
 $modName = $_SESSION['first_name'] ?? 'Moderator';
 
 // =========================================================================
-// 2. Performance Service (محدث لجلب كافة المعالجين)
+// 2. Performance Service (100% REAL DATA ONLY - NO RANDOMIZATION)
 // =========================================================================
 class PerformanceService {
     private $db;
@@ -32,8 +32,7 @@ class PerformanceService {
     }
 
     public function getDashboardData(int $days): array {
-        // 1. سحب بيانات كافة المعالجين (LEFT JOIN لضمان ظهور الجميع مثل منة أشرف)
-        // تم توسيع الـ Status ليشمل الحالات المختلفة الموجودة في الداتابيز
+        // Fetch all active therapists
         $stmt = $this->db->prepare("
             SELECT u.user_id, u.first_name, u.last_name, t.specialization 
             FROM users u 
@@ -44,10 +43,9 @@ class PerformanceService {
         $stmt->execute();
         $therapists = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        // 2. سحب الإحصائيات من الداتابيز الحقيقية
         $kpis = ['avg_rating' => 0.0, 'total_reviews' => 0, 'sessions_completed' => 0, 'no_show_rate' => 0.0];
 
-        // إحصائيات الجلسات العامة
+        // Global Sessions & Appointments
         $sessStmt = $this->db->prepare("SELECT COUNT(*) FROM appointments WHERE status = 'Completed' AND appointment_date >= DATE_SUB(NOW(), INTERVAL ? DAY)");
         $sessStmt->execute([$days]);
         $kpis['sessions_completed'] = (int)$sessStmt->fetchColumn();
@@ -61,16 +59,14 @@ class PerformanceService {
         $nsAppts = (int)$nsStmt->fetchColumn();
         $kpis['no_show_rate'] = $totAppts > 0 ? round(($nsAppts / $totAppts) * 100, 1) : 0.0;
 
-        // التقييمات العامة
+        // Global Reviews
         $revStmt = $this->db->prepare("SELECT AVG(rating) as avg_r, COUNT(*) as cnt FROM therapist_reviews WHERE created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)");
         $revStmt->execute([$days]);
         $revData = $revStmt->fetch(PDO::FETCH_ASSOC);
 
-        $kpis['avg_rating'] = $revData['cnt'] > 0 ? round($revData['avg_r'], 1) : 0.0;
+        $kpis['avg_rating'] = $revData['cnt'] > 0 ? round((float)$revData['avg_r'], 1) : 0.0;
         $kpis['total_reviews'] = (int)$revData['cnt'];
 
-        // 3. معالجة بيانات كل معالج على حدة
-        $hasRealData = $kpis['total_reviews'] > 0 || $totAppts > 0;
         $colors = ['#2F8F7E', '#48B6A2', '#F4B41A', '#8F5E2F', '#6c757d'];
 
         foreach ($therapists as $index => &$t) {
@@ -78,65 +74,82 @@ class PerformanceService {
             $t['initials'] = strtoupper(substr($t['first_name'], 0, 1) . substr($t['last_name'], 0, 1));
             $t['color'] = $colors[$index % 5];
 
-            if ($hasRealData) {
-                // سحب تقييمات الدكتور الفعلي
-                $trStmt = $this->db->prepare("SELECT AVG(rating) as r_avg, COUNT(*) as r_count FROM therapist_reviews WHERE therapist_id = ?");
-                $trStmt->execute([$tid]);
-                $trData = $trStmt->fetch(PDO::FETCH_ASSOC);
-                $t['rating'] = round((float)($trData['r_avg'] ?? 0), 1);
-                $t['reviews_count'] = (int)($trData['r_count'] ?? 0);
+            // Real Rating & Reviews
+            $trStmt = $this->db->prepare("SELECT AVG(rating) as r_avg, COUNT(*) as r_count FROM therapist_reviews WHERE therapist_id = ? AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)");
+            $trStmt->execute([$tid, $days]);
+            $trData = $trStmt->fetch(PDO::FETCH_ASSOC);
+            $t['rating'] = round((float)($trData['r_avg'] ?? 0), 1);
+            $t['reviews_count'] = (int)($trData['r_count'] ?? 0);
 
-                // إحصائيات الجلسات والمرضى
-                $tSessStmt = $this->db->prepare("SELECT COUNT(*) FROM appointments WHERE therapist_id = ? AND status = 'Completed'");
-                $tSessStmt->execute([$tid]);
-                $tSess = (int)$tSessStmt->fetchColumn();
+            // Real Sessions & Patients
+            $tSessStmt = $this->db->prepare("SELECT COUNT(*) FROM appointments WHERE therapist_id = ? AND status = 'Completed' AND appointment_date >= DATE_SUB(NOW(), INTERVAL ? DAY)");
+            $tSessStmt->execute([$tid, $days]);
+            $tSess = (int)$tSessStmt->fetchColumn();
 
-                $tPatStmt = $this->db->prepare("SELECT COUNT(DISTINCT patient_id) FROM appointments WHERE therapist_id = ?");
-                $tPatStmt->execute([$tid]);
-                $tPat = (int)$tPatStmt->fetchColumn();
+            $tPatStmt = $this->db->prepare("SELECT COUNT(DISTINCT patient_id) FROM appointments WHERE therapist_id = ? AND appointment_date >= DATE_SUB(NOW(), INTERVAL ? DAY)");
+            $tPatStmt->execute([$tid, $days]);
+            $tPat = (int)$tPatStmt->fetchColumn();
 
-                $t['details'] = [
-                        'sessions' => $tSess,
-                        'patients' => $tPat,
-                        'no_show' => 0.0,
-                        'breakdown' => ['star5'=>60, 'star4'=>20, 'star3'=>10, 'star2'=>5, 'star1'=>5],
-                        'feedback' => []
-                ];
-            } else {
-                // بيانات وهمية (Mock Data) للعرض المثالي لو الداتابيز فاضية (Presentation Mode)
-                $t['rating'] = rand(38, 50) / 10;
-                $t['reviews_count'] = rand(20, 150);
-                $t['details'] = [
-                        'sessions' => rand(50, 200),
-                        'patients' => rand(10, 40),
-                        'no_show' => rand(1, 8) + (rand(0,9)/10),
-                        'breakdown' => [
-                                'star5' => rand(50, 75),
-                                'star4' => rand(15, 25),
-                                'star3' => rand(5, 10),
-                                'star2' => rand(1, 5),
-                        ],
-                        'feedback' => [
-                                ['stars' => 5, 'time' => '2 days ago', 'text' => "Excellent session, very helpful!"],
-                                ['stars' => 4, 'time' => '1 week ago', 'text' => "Good listener, gave me practical advice."],
-                        ]
-                ];
-                $t['details']['breakdown']['star1'] = 100 - array_sum($t['details']['breakdown']);
+            // Real No-Show Rate
+            $tTotApptStmt = $this->db->prepare("SELECT COUNT(*) FROM appointments WHERE therapist_id = ? AND appointment_date >= DATE_SUB(NOW(), INTERVAL ? DAY)");
+            $tTotApptStmt->execute([$tid, $days]);
+            $tTotAppts = (int)$tTotApptStmt->fetchColumn();
+
+            $tNsStmt = $this->db->prepare("SELECT COUNT(*) FROM appointments WHERE therapist_id = ? AND status = 'No-Show' AND appointment_date >= DATE_SUB(NOW(), INTERVAL ? DAY)");
+            $tNsStmt->execute([$tid, $days]);
+            $tNs = (int)$tNsStmt->fetchColumn();
+            $tNoShowRate = $tTotAppts > 0 ? round(($tNs / $tTotAppts) * 100, 1) : 0.0;
+
+            // Calculate Real Rating Breakdown Percentages
+            $breakdown = ['star5' => 0, 'star4' => 0, 'star3' => 0, 'star2' => 0, 'star1' => 0];
+            if ($t['reviews_count'] > 0) {
+                $bdStmt = $this->db->prepare("
+                    SELECT rating, COUNT(*) as cnt 
+                    FROM therapist_reviews 
+                    WHERE therapist_id = ? AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY) 
+                    GROUP BY rating
+                ");
+                $bdStmt->execute([$tid, $days]);
+                $bdRows = $bdStmt->fetchAll(PDO::FETCH_ASSOC);
+
+                foreach ($bdRows as $row) {
+                    $star = round((float)$row['rating']);
+                    if ($star >= 1 && $star <= 5) {
+                        $breakdown['star' . $star] = round(($row['cnt'] / $t['reviews_count']) * 100);
+                    }
+                }
             }
-        }
 
-        // مطابقة الـ KPIs العلوية مع بيانات المعالجين لضمان الاتساق
-        if (!$hasRealData && count($therapists) > 0) {
-            $sumRating = 0; $sumReviews = 0; $sumSessions = 0;
-            foreach ($therapists as $t) {
-                $sumRating += ($t['rating'] * $t['reviews_count']);
-                $sumReviews += $t['reviews_count'];
-                $sumSessions += $t['details']['sessions'];
+            // Fetch Real Recent Feedback Comments
+            $fbStmt = $this->db->prepare("
+                SELECT rating as stars, created_at, comment as text 
+                FROM therapist_reviews 
+                WHERE therapist_id = ? 
+                  AND comment IS NOT NULL 
+                  AND TRIM(comment) != '' 
+                  AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
+                ORDER BY created_at DESC 
+                LIMIT 5
+            ");
+            $fbStmt->execute([$tid, $days]);
+            $feedbackRows = $fbStmt->fetchAll(PDO::FETCH_ASSOC);
+
+            $feedback = [];
+            foreach ($feedbackRows as $fb) {
+                $feedback[] = [
+                        'stars' => round((float)$fb['stars']),
+                        'time'  => date('M j, Y', strtotime($fb['created_at'])),
+                        'text'  => htmlspecialchars($fb['text'], ENT_QUOTES, 'UTF-8')
+                ];
             }
-            $kpis['avg_rating'] = $sumReviews > 0 ? round($sumRating / $sumReviews, 1) : 4.5;
-            $kpis['total_reviews'] = $sumReviews;
-            $kpis['sessions_completed'] = $sumSessions;
-            $kpis['no_show_rate'] = 4.2;
+
+            $t['details'] = [
+                    'sessions'  => $tSess,
+                    'patients'  => $tPat,
+                    'no_show'   => $tNoShowRate,
+                    'breakdown' => $breakdown,
+                    'feedback'  => $feedback
+            ];
         }
 
         usort($therapists, fn($a, $b) => $b['rating'] <=> $a['rating']);
@@ -320,7 +333,7 @@ function renderStars($rating) {
                                                 <small class="text-secondary-custom"><?php echo number_format($t['rating'], 1); ?> · <?php echo $t['reviews_count']; ?> reviews</small>
                                             </div>
                                         </div>
-                                        <?php if ($index === 0): ?>
+                                        <?php if ($index === 0 && count($therapists) > 1 && $t['reviews_count'] > 0): ?>
                                             <span class="badge" style="background:var(--light-green); color:var(--primary-green);">Top</span>
                                         <?php endif; ?>
                                     </div>
