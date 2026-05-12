@@ -902,9 +902,9 @@ class AdminTherapistPerformance extends AdminTherapistManager implements AdminTh
 
     public function getTherapistRecentFeedback(int $therapist_id, int $limit = 5): array {
         $stmt = $this->conn->prepare("
-            SELECT rating, comment, created_at
+            SELECT rating, review_text, created_at
             FROM   therapist_reviews
-            WHERE  therapist_id = ? AND comment IS NOT NULL AND comment <> ''
+            WHERE  therapist_id = ? AND review_text IS NOT NULL AND review_text <> ''
             ORDER  BY created_at DESC
             LIMIT  ?
         ");

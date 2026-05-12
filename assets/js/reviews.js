@@ -47,7 +47,7 @@ function updateStarDisplay(rating) {
     });
 }
 
-async function submitReview() {
+async function submitReview(button) {
     const therapistId = document.getElementById('reviewTherapistId')?.value;
     const reviewText = document.getElementById('reviewText')?.value;
     const messageDiv = document.getElementById('reviewMessage');
@@ -72,13 +72,13 @@ async function submitReview() {
         return;
     }
 
-    const submitButton = event.target;
+    const submitButton = button || event.target;
     const originalText = submitButton.innerHTML;
     submitButton.disabled = true;
     submitButton.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Submitting...';
 
     try {
-        const response = await fetch('../Controllers/ReviewController.php?action=review&subaction=submit', {
+        const response = await fetch('../../Controllers/ReviewController.php?action=review&subaction=submit', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -126,7 +126,7 @@ async function loadMyReviews() {
     `;
 
     try {
-        const response = await fetch('../Controllers/ReviewController.php?action=review&subaction=get_my_reviews', {
+        const response = await fetch('../../Controllers/ReviewController.php?action=review&subaction=get_my_reviews', {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json',
@@ -225,7 +225,7 @@ function generateStarDisplay(rating) {
 
 async function markHelpful(reviewId) {
     try {
-        const response = await fetch('../Controllers/ReviewController.php?action=review&subaction=mark_helpful', {
+        const response = await fetch('../../Controllers/ReviewController.php?action=review&subaction=mark_helpful', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -282,7 +282,7 @@ function showMessage(message, type, container) {
 // Utility function to check if patient can review therapist
 async function checkCanReviewTherapist(therapistId) {
     try {
-        const response = await fetch(`../Controllers/ReviewController.php?action=review&subaction=can_review&therapist_id=${therapistId}`, {
+        const response = await fetch(`../../Controllers/ReviewController.php?action=review&subaction=can_review&therapist_id=${therapistId}`, {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json',

@@ -104,11 +104,11 @@ class PerformanceService {
 
             // Fetch REAL Recent Feedback (If none exists, it will return an empty array)
             $fbStmt = $this->db->prepare("
-                SELECT rating as stars, created_at, comment as text 
+                SELECT rating as stars, created_at, review_text as text 
                 FROM therapist_reviews 
                 WHERE therapist_id = ? 
-                  AND comment IS NOT NULL 
-                  AND TRIM(comment) != '' 
+                  AND review_text IS NOT NULL 
+                  AND TRIM(review_text) != '' 
                   AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
                 ORDER BY created_at DESC 
                 LIMIT 5

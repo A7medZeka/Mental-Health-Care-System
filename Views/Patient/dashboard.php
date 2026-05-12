@@ -366,7 +366,7 @@ $intakeStatus        = $controller->getIntakeStatus();
                       <textarea id="reviewText" class="form-control" rows="4" placeholder="Share your experience with this therapist..." maxlength="1000"></textarea>
                       <small class="text-muted">Maximum 1000 characters</small>
                     </div>
-                    <button type="button" class="btn btn-primary-custom w-100" onclick="submitReview()">
+                    <button type="button" class="btn btn-primary-custom w-100" onclick="submitReview(this)">
                       <i class="bi bi-star me-1"></i> Submit Review
                     </button>
                     <div id="reviewMessage" class="mt-3"></div>

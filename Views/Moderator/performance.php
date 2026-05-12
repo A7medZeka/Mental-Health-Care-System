@@ -91,7 +91,7 @@ class PerformanceService {
             $tNoShowRate = $therapistTotal > 0 ? round(($therapistNS / $therapistTotal) * 100, 1) : 0.0;
 
             // 5. Feedback Comments (Matching 'comment' column in SQL)
-            $fbStmt = $this->db->prepare("SELECT rating as stars, created_at, comment as text FROM therapist_reviews WHERE therapist_id = ? AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY) ORDER BY created_at DESC LIMIT 5");
+            $fbStmt = $this->db->prepare("SELECT rating as stars, created_at, review_text as text FROM therapist_reviews WHERE therapist_id = ? AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY) ORDER BY created_at DESC LIMIT 5");
             $fbStmt->execute([$tid, $days]);
             $feedback = [];
             while ($fb = $fbStmt->fetch(PDO::FETCH_ASSOC)) {

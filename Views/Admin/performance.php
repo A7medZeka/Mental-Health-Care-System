@@ -369,7 +369,7 @@ $avatarColors  = ['#2F8F7E','#48B6A2','#F4B41A','#8F5E2F','#5B8FA8','#A87B5B'];
                                                 <?= htmlspecialchars(date('d M Y', strtotime($fb['created_at']))) ?>
                                             </small>
                                         </div>
-                                        <?= htmlspecialchars($fb['comment']) ?>
+                                        <?= htmlspecialchars($fb['review_text']) ?>
                                     </div>
                                 <?php endforeach; ?>
                             <?php endif; ?>
