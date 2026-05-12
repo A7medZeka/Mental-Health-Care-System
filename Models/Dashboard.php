@@ -16,37 +16,31 @@ class Dashboard {
         $postRepo = new PostRepository();
         $conn = SingletonDatabase::getInstance()->getConnection();
 
+        // 1. جلب عدد المنشورات المبلّغ عنها
         $flaggedCount = count($postRepo->getFlaggedPosts());
-        $crisisStmt = $conn->prepare("
-            SELECT COUNT(*) as cnt 
-            FROM community_posts 
-            WHERE is_flagged = 1 
-            AND content REGEXP 'انتحار|اموت نفسي|suicide|kill myself|انتحر'
-        ");
-        $crisisStmt->execute();
-        $crisisCount = (int)($crisisStmt->fetch(PDO::FETCH_ASSOC)['cnt'] ?? 0);
 
-        $logStmt = $conn->prepare("
-            SELECT COUNT(*) as cnt 
-            FROM moderation_logs 
-            WHERE created_at >= DATE_SUB(NOW(), INTERVAL 1 MONTH)
-        ");
-        $logStmt->execute();
-        $actionsLogged = (int)($logStmt->fetch(PDO::FETCH_ASSOC)['cnt'] ?? 0);
-        // جلب عدد المنشورات المنشورة اليوم فعلياً
+        // 2. جلب إحصائيات التنبيهات والأزمات
+        $crisisStmt = $conn->query("SELECT COUNT(*) FROM community_posts WHERE is_flagged = 1 AND content REGEXP 'انتحار|اموت نفسي|suicide|kill myself'");
+        $crisisCount = (int)$crisisStmt->fetchColumn();
+
+        $actionsStmt = $conn->query("SELECT COUNT(*) FROM moderation_logs WHERE created_at >= DATE_SUB(NOW(), INTERVAL 1 MONTH)");
+        $actionsLogged = (int)$actionsStmt->fetchColumn();
+
+        // 3. جلب عدد المنشورات المنشورة اليوم (Total Today)
         $todayStmt = $conn->query("SELECT COUNT(*) FROM community_posts WHERE DATE(created_at) = CURDATE()");
         $totalToday = (int)$todayStmt->fetchColumn();
 
-        // جلب عدد الحالات الخطيرة
-        $crisisStmt = $conn->prepare("SELECT COUNT(*) FROM community_posts WHERE is_flagged = 1 AND content REGEXP 'انتحار|اموت نفسي|suicide'");
-        $crisisStmt->execute();
-        $crisisCount = (int)$crisisStmt->fetchColumn();
+        // 4. جلب أحدث 5 تنبيهات من سجل الأمان (الربط المفقود)
+        // 4. جلب أحدث 5 تنبيهات من سجل الأمان (الربط المفقود)
+        $alertsStmt = $conn->query("SELECT action, severity, description, timestamp as created_at FROM audit_logs ORDER BY timestamp DESC LIMIT 5");
+        $recentAlerts = $alertsStmt->fetchAll(PDO::FETCH_ASSOC);
 
         return [
             'flagged_posts'  => $flaggedCount,
             'crisis_alerts'  => $crisisCount,
             'actions_logged' => $actionsLogged,
-            'total_today'    => $totalToday
+            'total_today'    => $totalToday,
+            'recent_alerts'  => $recentAlerts
         ];
     }
 

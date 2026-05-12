@@ -93,7 +93,7 @@ $modName = $_SESSION['first_name'] ?? 'Sarah M.';
                         <div class="p-4">
                             <div class="d-flex justify-content-between mb-2">
                                 <div>
-                                    <span class="font-monospace fw-bold text-danger"><?php echo $log['eventID']; ?></span>
+                                    <span class="font-monospace fw-bold text-danger"><?php echo htmlspecialchars($log['eventID'] ?? $log['eventId'] ?? 'EVT-' . str_pad($log['id'] ?? rand(100,999), 4, '0', STR_PAD_LEFT)); ?></span>
                                     <span class="sev-badge sev-<?php echo strtolower($log['severity']); ?> ms-2"><?php echo $log['severity']; ?></span>
                                 </div>
                                 <small class="text-muted"><?php echo $log['timestamp']; ?> UTC</small>
@@ -105,7 +105,7 @@ $modName = $_SESSION['first_name'] ?? 'Sarah M.';
                                     <div class="tl-dot tl-dot-system"></div>
                                     <div><strong>System</strong> — Event flagged and record created.</div>
                                 </div>
-                                <?php foreach ($log['timeline'] as $step): ?>
+                                <?php foreach ($log['timeline'] ?? [] as $step): ?>
                                     <div class="tl-item">
                                         <div class="tl-dot tl-dot-mod"></div>
                                         <div><strong><?php echo $step['timestamp']; ?></strong> — <?php echo htmlspecialchars($step['action']); ?></div>

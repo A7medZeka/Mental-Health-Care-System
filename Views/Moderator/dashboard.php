@@ -89,7 +89,7 @@ $gender = $userExtra['gender'] ?? 'N/A';
                     <li class="nav-item">
                         <a class="nav-link" href="forum.php">
                             <i class="bi bi-shield-exclamation me-2"></i> Forum Moderation
-                            <span class="badge bg-danger ms-auto" id="navBadgeForum"><?php echo htmlspecialchars($modData['flagged_count'] ?? 0); ?></span>
+                            <span class="badge bg-danger ms-auto" id="navBadgeForum"><?php echo htmlspecialchars($modData['flagged_posts'] ?? 0); ?></span>
                         </a>
                     </li>
                     <li class="nav-item">
@@ -100,7 +100,7 @@ $gender = $userExtra['gender'] ?? 'N/A';
                     <li class="nav-item">
                         <a class="nav-link" href="safety-audit.php">
                             <i class="bi bi-journal-medical me-2"></i> Safety Audit Log
-                            <span class="badge bg-warning text-dark ms-auto" id="navBadgeAudit"><?php echo htmlspecialchars($modData['crisis_count'] ?? 0); ?></span>
+                            <span class="badge bg-warning text-dark ms-auto" id="navBadgeAudit"><?php echo htmlspecialchars($modData['crisis_alerts'] ?? 0); ?></span>
                         </a>
                     </li>
                 </ul>
@@ -129,7 +129,7 @@ $gender = $userExtra['gender'] ?? 'N/A';
                         <div class="d-flex justify-content-between align-items-center">
                             <div>
                                 <p class="text-secondary-custom mb-1 small">Flagged Posts</p>
-                                <h3 class="fw-bold mb-0" style="color:#dc3545;"><?php echo htmlspecialchars($modData['flagged_count'] ?? 0); ?></h3>
+                                <h3 class="fw-bold mb-0" style="color:#dc3545;"><?php echo htmlspecialchars($modData['flagged_posts'] ?? 0); ?></h3>
                                 <small class="text-secondary-custom">Awaiting review</small>
                             </div>
                             <div class="mod-stat-icon bg-danger bg-opacity-10 text-danger"><i class="bi bi-flag-fill"></i></div>
@@ -141,7 +141,7 @@ $gender = $userExtra['gender'] ?? 'N/A';
                         <div class="d-flex justify-content-between align-items-center">
                             <div>
                                 <p class="text-secondary-custom mb-1 small">Crisis Alerts</p>
-                                <h3 class="fw-bold mb-0" style="color:#fd7e14;"><?php echo htmlspecialchars($modData['crisis_count'] ?? 0); ?></h3>
+                                <h3 class="fw-bold mb-0" style="color:#fd7e14;"><?php echo htmlspecialchars($modData['crisis_alerts'] ?? 0); ?></h3>
                                 <small class="text-secondary-custom">Needs escalation</small>
                             </div>
                             <div class="mod-stat-icon bg-warning bg-opacity-10" style="color:#fd7e14;"><i class="bi bi-exclamation-triangle-fill"></i></div>
@@ -153,7 +153,7 @@ $gender = $userExtra['gender'] ?? 'N/A';
                         <div class="d-flex justify-content-between align-items-center">
                             <div>
                                 <p class="text-secondary-custom mb-1 small">Posts Today</p>
-                                <h3 class="fw-bold mb-0 text-primary-custom"><?php echo htmlspecialchars($modData['posts_today'] ?? 0); ?></h3>
+                                <h3 class="fw-bold mb-0 text-primary-custom"><?php echo htmlspecialchars($modData['total_today'] ?? 0); ?></h3>
                                 <small class="text-secondary-custom">Across all categories</small>
                             </div>
                             <div class="mod-stat-icon bg-light-green text-primary-custom"><i class="bi bi-chat-dots-fill"></i></div>
