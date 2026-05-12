@@ -15,6 +15,7 @@ class Therapist extends User {
     private float $hourly_rate;
     private string $availability_schedule;
     private bool $is_verified;
+    private string $cultural;
     private TherapistObserver $observer;
     private array $moderation_logs = [];
     private array $therapist_matches = [];
@@ -22,6 +23,8 @@ class Therapist extends User {
 
     public function __construct(array $data = []) {
         parent::__construct();
+        $this->cultural = '';
+        $this->gender = '';
         if (!empty($data)) {
             $this->therapist_id = (int) ($data['therapist_id'] ?? 0);
             $this->specialization = $data['specialization'] ?? '';
@@ -33,6 +36,8 @@ class Therapist extends User {
             $this->hourly_rate = (float) ($data['hourly_rate'] ?? 0.0);
             $this->availability_schedule = $data['availability_schedule'] ?? '';
             $this->is_verified = (bool) ($data['is_verified'] ?? false);
+            $this->cultural = $data['cultural'] ?? ($data['Cultural'] ?? '');
+            $this->gender = $data['gender'] ?? '';
         }
         $this->observer = new TherapistObserver($this->therapist_id);
     }
@@ -48,6 +53,9 @@ class Therapist extends User {
     public function getLanguages(): string { return $this->languages; }
     public function getExperienceYears(): int { return $this->experience_years; }
     public function getRating(): float { return $this->rating; }
+    public function getAvailabilitySchedule(): string { return $this->availability_schedule; }
+    public function getCultural(): string { return $this->cultural; }
+    public function getGender(): string { return (string)($this->gender ?? ''); }
     public function addModerationLog(ModerationLog $log): void { $this->moderation_logs[] = $log; }
     public function getModerationLogs(): array { return $this->moderation_logs; }
     public function addTherapistMatch(TherapistMatch $match): void { $this->therapist_matches[] = $match; }

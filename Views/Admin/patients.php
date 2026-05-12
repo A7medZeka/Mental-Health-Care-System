@@ -47,7 +47,6 @@ $statusBadgeColor = static function (string $status): string {
 <div class="container-fluid">
     <div class="row">
 
-        <!-- ── Sidebar ──────────────────────────────────────────────────────── -->
         <nav class="col-md-3 col-lg-2 d-md-block sidebar collapse bg-white shadow-sm">
             <div class="position-sticky pt-4">
                 <div class="text-center mb-4">
@@ -66,7 +65,6 @@ $statusBadgeColor = static function (string $status): string {
             </div>
         </nav>
 
-        <!-- ── Main content ─────────────────────────────────────────────────── -->
         <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4 py-4 fade-in">
 
             <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-4 border-bottom">
@@ -79,7 +77,6 @@ $statusBadgeColor = static function (string $status): string {
             <?php if ($featured): ?>
             <div class="row">
 
-                <!-- ── Profile card ───────────────────────────────────────────── -->
                 <div class="col-lg-6 mb-4">
                     <div class="card card-custom h-100" id="profileCard">
                         <div class="card-header bg-white border-0 pt-4 pb-0">
@@ -146,6 +143,45 @@ $statusBadgeColor = static function (string $status): string {
             <?php else: ?>
                 <div class="alert alert-info">No patients found in the system.</div>
             <?php endif; ?>
+
+            <!-- ── Wellness Resources Section ─────────────────────────────────────── -->
+            <div class="row mt-4" id="wellnessResourcesSection" style="display:none;">
+                <div class="col-12">
+                    <div class="card card-custom">
+                        <div class="card-header bg-white border-0 pt-4 pb-0">
+                            <h5 class="fw-bold text-primary-custom">
+                                <i class="bi bi-stars me-2"></i>Wellness Resources & Goals
+                            </h5>
+                            <small class="text-secondary-custom">Resources based on patient's active goals</small>
+                        </div>
+                        <div class="card-body">
+                            <!-- Patient Goals -->
+                            <div class="mb-4">
+                                <h6 class="text-secondary-custom mb-3">Active Goals</h6>
+                                <div id="patientGoalsList" class="row g-2">
+                                    <!-- Goals will be loaded here -->
+                                </div>
+                            </div>
+                            
+                            <!-- Resources by Goal Categories -->
+                            <div class="mb-4">
+                                <h6 class="text-secondary-custom mb-3">Recommended Resources</h6>
+                                <div id="patientResourcesList">
+                                    <!-- Resources will be loaded here -->
+                                </div>
+                            </div>
+                            
+                            <!-- All Resources -->
+                            <div>
+                                <h6 class="text-secondary-custom mb-3">All Available Resources</h6>
+                                <div id="allResourcesList" class="row g-3">
+                                    <!-- All resources will be loaded here -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
             <!-- ── Patients table ─────────────────────────────────────────────── -->
             <div class="card card-custom mt-2">
@@ -254,7 +290,154 @@ document.getElementById('patientsTableBody').addEventListener('click', e => {
     row.classList.add('table-active');
 
     document.getElementById('profileCard').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    
+    // Load wellness resources for selected patient
+    loadWellnessResources(patientId);
 });
+
+// ── Load Wellness Resources ─────────────────────────────────────────────────────
+async function loadWellnessResources(patientId) {
+    try {
+        // Load patient goals
+        const goalsResponse = await fetch(`patients.php?action=get_goals&patient_id=${patientId}`);
+        const goalsData = await goalsResponse.json();
+        
+        // Load patient resources
+        const resourcesResponse = await fetch(`patients.php?action=get_patient_resources&patient_id=${patientId}`);
+        const resourcesData = await resourcesResponse.json();
+        
+        // Load all resources
+        const allResourcesResponse = await fetch(`patients.php?action=get_all_resources`);
+        const allResourcesData = await allResourcesResponse.json();
+        
+        // Display the data
+        displayPatientGoals(goalsData.goals || []);
+        displayPatientResources(resourcesData.resources || {});
+        displayAllResources(allResourcesData.resources || []);
+        
+        // Show the wellness resources section
+        document.getElementById('wellnessResourcesSection').style.display = 'block';
+        
+    } catch (error) {
+        console.error('Error loading wellness resources:', error);
+        showToast('Failed to load wellness resources', 'danger');
+    }
+}
+
+// ── Display Patient Goals ─────────────────────────────────────────────────────
+function displayPatientGoals(goals) {
+    const container = document.getElementById('patientGoalsList');
+    
+    if (goals.length === 0) {
+        container.innerHTML = '<div class="col-12"><p class="text-muted">No active goals found.</p></div>';
+        return;
+    }
+    
+    container.innerHTML = goals.map(goal => `
+        <div class="col-md-6 col-lg-4">
+            <div class="card card-custom p-3">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="fw-bold text-primary-custom mb-1">${goal.title}</h6>
+                        <span class="badge bg-info">${goal.category}</span>
+                    </div>
+                    <div class="text-end">
+                        <small class="text-muted">${goal.progress}%</small>
+                        <div class="progress" style="height: 4px;">
+                            <div class="progress-bar bg-success" style="width: ${goal.progress}%"></div>
+                        </div>
+                    </div>
+                </div>
+                <small class="text-muted">Status: ${goal.status}</small>
+            </div>
+        </div>
+    `).join('');
+}
+
+// ── Display Patient Resources ─────────────────────────────────────────────────────
+function displayPatientResources(resources) {
+    const container = document.getElementById('patientResourcesList');
+    
+    if (Object.keys(resources).length === 0) {
+        container.innerHTML = '<p class="text-muted">No resources available based on patient goals.</p>';
+        return;
+    }
+    
+    const resIcons = {'Mindfulness':'lungs','Therapy':'book','Audio':'music-note-beamed','Exercise':'bicycle','Sleep':'moon','Nutrition':'heart-pulse','Stress':'shield-check'};
+    
+    let resourcesHtml = '';
+    for (const [category, categoryResources] of Object.entries(resources)) {
+        resourcesHtml += `
+            <div class="mb-4">
+                <h6 class="fw-bold text-primary-custom mb-3">
+                    <i class="bi bi-bullseye me-2"></i>${category} Resources
+                </h6>
+                <div class="row g-3">
+        `;
+        
+        for (const res of categoryResources) {
+            const icon = resIcons[res.category] || 'star';
+            resourcesHtml += `
+                    <div class="col-md-6 col-lg-4">
+                        <div class="card card-custom p-3">
+                            <div class="d-flex align-items-start">
+                                <div class="bg-light-green rounded-circle d-flex align-items-center justify-content-center me-3" style="width:40px;height:40px;flex-shrink:0;">
+                                    <i class="bi bi-${icon} text-primary-custom fs-5"></i>
+                                </div>
+                                <div class="flex-grow-1">
+                                    <h6 class="fw-bold text-primary-custom mb-1">${res.title}</h6>
+                                    <span class="badge mb-2" style="background-color:var(--primary-green);">${res.category}</span>
+                                    <p class="small text-secondary-custom mb-2">${res.description ? res.description.substring(0, 80) + '...' : ''}</p>
+                                    <button class="btn btn-sm btn-outline-primary" onclick="showToast('Opening resource: ${res.title}', 'success')">
+                                        <i class="bi bi-box-arrow-up-right me-1"></i>Open
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+            `;
+        }
+        
+        resourcesHtml += `
+                </div>
+            </div>
+        `;
+    }
+    container.innerHTML = resourcesHtml;
+}
+
+// ── Display All Resources ─────────────────────────────────────────────────────
+function displayAllResources(resources) {
+    const container = document.getElementById('allResourcesList');
+    
+    if (resources.length === 0) {
+        container.innerHTML = '<div class="col-12"><p class="text-muted">No resources available.</p></div>';
+        return;
+    }
+    
+    const resIcons = {'Mindfulness':'lungs','Therapy':'book','Audio':'music-note-beamed','Exercise':'bicycle','Sleep':'moon','Nutrition':'heart-pulse','Stress':'shield-check'};
+    
+    let resourcesHtml = '';
+    for (const res of resources) {
+        const icon = resIcons[res.category] || 'star';
+        resourcesHtml += `
+            <div class="col-md-6 col-lg-3">
+                <div class="card card-custom p-3 text-center">
+                    <div class="bg-light-green rounded-circle d-inline-flex align-items-center justify-content-center mx-auto mb-3" style="width:50px;height:50px;">
+                        <i class="bi bi-${icon} text-primary-custom fs-4"></i>
+                    </div>
+                    <h6 class="fw-bold text-primary-custom mb-1">${res.title}</h6>
+                    <span class="badge mb-2" style="background-color:var(--primary-green);">${res.category}</span>
+                    <p class="small text-secondary-custom mb-2">${res.description ? res.description.substring(0, 60) + '...' : ''}</p>
+                    <button class="btn btn-sm btn-outline-primary" onclick="showToast('Opening resource: ${res.title}', 'success')">
+                        <i class="bi bi-box-arrow-up-right me-1"></i>Open
+                    </button>
+                </div>
+            </div>
+        `;
+    }
+    container.innerHTML = resourcesHtml;
+}
 
 // ── Update patient status ─────────────────────────────────────────────────────
 document.getElementById('updateStatusBtn').addEventListener('click', async function () {

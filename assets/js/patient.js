@@ -58,8 +58,27 @@ function patientPost(formData, onSuccess) {
         body: formData,
         credentials: 'same-origin',
     })
-    .then(r => r.json())
+    .then(async (r) => {
+        if (r.redirected) {
+            showToast('Session expired. Please reload and log in again.', 'danger');
+            return null;
+        }
+        const raw = await r.text();
+        if (!r.ok) {
+            console.error(raw);
+            showToast('Server error. Please try again.', 'danger');
+            return null;
+        }
+        try {
+            return JSON.parse(raw);
+        } catch (e) {
+            console.error(raw);
+            showToast('Invalid server response. Check PHP errors.', 'danger');
+            return null;
+        }
+    })
     .then(data => {
+        if (!data) return;
         if (data.success) {
             showToast(data.message || 'Done!', 'success');
             if (typeof onSuccess === 'function') onSuccess(data);
@@ -67,7 +86,10 @@ function patientPost(formData, onSuccess) {
             showToast(data.message || 'Something went wrong.', 'danger');
         }
     })
-    .catch(() => showToast('Network error. Please try again.', 'danger'));
+    .catch((e) => {
+        console.error(e);
+        showToast('Network error. Please try again.', 'danger');
+    });
 }
 
 function buildForm(action, fields) {
@@ -100,6 +122,11 @@ function savePreferences() {
     patientPost(fd);
 }
 
+function requestTherapistMatch() {
+    const fd = buildForm('request_match', {});
+    patientPost(fd, () => setTimeout(() => location.reload(), 1200));
+}
+
 // ── Appointments ──────────────────────────────────────────────────────────────
 
 function confirmBooking() {
@@ -124,11 +151,23 @@ function cancelAppointment(appointmentId) {
 }
 
 function checkAvailability() {
-    const result = document.getElementById('availabilityResult');
-    if (result) {
+    const therapistId = document.getElementById('apptTherapist')?.value;
+    const date        = document.getElementById('apptDate')?.value;
+
+    if (!therapistId || !date) { showToast('Select therapist and date first.', 'warning'); return; }
+
+    const fd = buildForm('check_availability', {
+        therapist_id: therapistId,
+        appointment_date: date,
+    });
+
+    patientPost(fd, (data) => {
+        const result = document.getElementById('availabilityResult');
+        if (!result) return;
         result.style.display = 'block';
-        result.innerHTML = '<div class="alert alert-success mb-0"><i class="bi bi-check-circle me-2"></i>Slot is available!</div>';
-    }
+        const ok = !!data.available;
+        result.innerHTML = `<div class="alert alert-${ok ? 'success' : 'warning'} mb-0">${data.message || (ok ? 'Slot is available.' : 'Not available.')}</div>`;
+    });
 }
 
 // ── Mood ─────────────────────────────────────────────────────────────────────
@@ -340,11 +379,18 @@ function markAllNotificationsRead() {
 // ── Session room UI (unchanged from original) ─────────────────────────────────
 
 function patientCheckIn() {
-    document.getElementById('statePreSession').style.display  = 'none';
-    document.getElementById('stateWaitingRoom').style.display = 'block';
-    document.getElementById('sessionBadge').textContent       = 'In Waiting Room';
-    document.getElementById('sessionBadge').className         = 'badge bg-warning text-dark ms-auto';
-    setTimeout(() => admitToSession(), 4000);
+    const btn = document.getElementById('btnPatientCheckIn');
+    const sessionId = btn ? parseInt(btn.dataset.sessionId || '0', 10) : 0;
+    if (!sessionId) { showToast('No session link yet. Please wait for your therapist.', 'warning'); return; }
+
+    const fd = buildForm('session_checkin', { session_id: sessionId });
+    patientPost(fd, () => {
+        document.getElementById('statePreSession').style.display  = 'none';
+        document.getElementById('stateWaitingRoom').style.display = 'block';
+        document.getElementById('sessionBadge').textContent       = 'In Waiting Room';
+        document.getElementById('sessionBadge').className         = 'badge bg-warning text-dark ms-auto';
+        setTimeout(() => admitToSession(), 4000);
+    });
 }
 function admitToSession() {
     document.getElementById('stateWaitingRoom').style.display = 'none';

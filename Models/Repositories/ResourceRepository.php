@@ -57,4 +57,30 @@ class ResourceRepository {
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
         return $row ? (bool)$row['is_allowed'] : true;
     }
+
+    public function getResourcesByGoalCategories(int $patientId): array {
+        $stmt = $this->db->prepare(
+            "SELECT DISTINCT wr.* FROM wellness_resources wr
+             INNER JOIN wellness_goals wg ON wr.category = wg.category
+             WHERE wg.patient_id = ? AND wg.status = 'In-Progress'
+             ORDER BY wr.category, wr.title"
+        );
+        $stmt->execute([$patientId]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    }
+
+    public function getResourcesGroupedByCategory(int $patientId): array {
+        $resources = $this->getResourcesByGoalCategories($patientId);
+        $grouped = [];
+        
+        foreach ($resources as $resource) {
+            $category = $resource['category'];
+            if (!isset($grouped[$category])) {
+                $grouped[$category] = [];
+            }
+            $grouped[$category][] = $resource;
+        }
+        
+        return $grouped;
+    }
 }

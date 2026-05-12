@@ -1,5 +1,4 @@
 <?php
-// Models/Observers/AdminObserver.php
 require_once __DIR__ . '/../../Interfaces/Observer/IObserver.php';
 require_once __DIR__ . '/../../Core/SingletonDatabase.php';
 

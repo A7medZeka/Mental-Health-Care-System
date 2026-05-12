@@ -2,7 +2,7 @@
 // Models/ClinicalNote.php
 
 require_once __DIR__ . '/../Interfaces/IEncryptable.php';
-require_once __DIR__ . '/../core/ImmutablePattern.php';
+require_once __DIR__ . '/../Core/ImmutablePattern.php';
 class ClinicalNote implements IEncryptable {
     private int $noteId;
     private int $sessionId;

@@ -7,6 +7,7 @@
 require_once __DIR__ . '/../Core/SingletonDatabase.php';
 require_once __DIR__ . '/../Core/Validation.php';
 require_once __DIR__ . '/../Models/Admin.php';
+require_once __DIR__ . '/../Models/Dashboard.php';
 
 class RBACController {
     private $database;
@@ -58,6 +59,14 @@ class RBACController {
             echo json_encode(['success' => false, 'error' => 'Unauthorized']);
             exit();
         }
+
+        // Check and push roles to ensure consistency
+        try {
+            $this->checkAndPushAllRoles();
+        } catch (Exception $e) {
+            error_log('Role check failed: ' . $e->getMessage());
+            // Continue without failing
+        }
         
         $action = $_POST['action'] ?? '';
         
@@ -73,6 +82,14 @@ class RBACController {
                 echo json_encode(['success' => false, 'error' => 'Invalid action']);
                 break;
         }
+    }
+    
+    /**
+     * Check and push all roles to ensure database consistency
+     */
+    private function checkAndPushAllRoles(): void {
+        $dashboard = new Dashboard();
+        $dashboard->checkAndPushRoles();
     }
     
     /**

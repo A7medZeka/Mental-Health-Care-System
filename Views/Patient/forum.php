@@ -262,7 +262,7 @@ function timeAgo(string $datetime): string {
                         <!-- Keyword Alert Strip (UC-29) -->
                         <div class="keyword-alert-strip mb-3" id="keywordAlert">
                             <i class="bi bi-exclamation-triangle-fill text-warning me-2"></i>
-                            <strong>Heads up:</strong> Your post may contain sensitive language. If you're in crisis, please use the <strong>Get Help Now</strong> button above.
+                            <strong>Heads up:</strong> Your post may contain sensitive or unallowed language. If you're in crisis, please use the <strong>Get Help Now</strong> button above.
                         </div>
 
                         <div class="d-flex align-items-center gap-3 flex-wrap">
@@ -288,7 +288,8 @@ function timeAgo(string $datetime): string {
                         <button class="filter-chip" data-filter="gratitude">Gratitude</button>
                     </div>
 
-                                  <?php if (empty($forumPosts)): ?>
+                    <div id="postsFeed">
+                    <?php if (empty($forumPosts)): ?>
                         <div class="text-center py-5 text-muted">
                           <i class="bi bi-chat-square-heart fs-1 mb-3 d-block"></i>
                           No posts yet. Be the first to share!
@@ -324,8 +325,7 @@ function timeAgo(string $datetime): string {
                             </div>
                         </div>
                     <?php endforeach; endif; ?>
-
-                    </div><!-- /postsFeed -->                 </div><!-- /postsFeed -->
+                    </div>
                 </div>
 
                 <!-- Right Sidebar Widgets -->

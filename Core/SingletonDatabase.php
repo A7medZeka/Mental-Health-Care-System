@@ -1,5 +1,4 @@
 <?php
-
 /*
  * Singleton Pattern Implementation for Database Connection
  * Ensures only one database connection exists throughout the application

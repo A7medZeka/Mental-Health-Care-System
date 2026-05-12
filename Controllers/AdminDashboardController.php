@@ -70,11 +70,21 @@ class AdminDashboardController {
         $this->requireLogin();
         $this->requireAdminRole();
         
+        // Check and push roles to ensure consistency
+        try {
+            $this->dashboardModel->checkAndPushRoles();
+        } catch (Exception $e) {
+            error_log('Role check failed: ' . $e->getMessage());
+            // Continue without failing the dashboard
+        }
+        
         // Initialize admin managers with session data
         $this->initializeAdminManagers();
 
         if ($method === 'POST') {
             $this->handlePost();
+        } else {
+            $this->handleGet();
         }
 
         return $this->getDashboardData();
@@ -105,18 +115,33 @@ class AdminDashboardController {
     }
 
     // =========================================================================
+    // GET dispatcher  (handles wellness AJAX requests)
+    // =========================================================================
+    private function handleGet(): void {
+        $action = $_GET['action'] ?? '';
+
+        match ($action) {
+            'get_goals'          => $this->handleGetGoals(),
+            'get_patient_resources' => $this->handleGetPatientResources(),
+            'get_all_resources'  => $this->handleGetAllResources(),
+            default            => null, // No action for regular GET requests
+        };
+    }
+
+    // =========================================================================
     // POST dispatcher  (routes only – no business logic here)
     // =========================================================================
     private function handlePost(): void {
-        $action = $_POST['action'] ?? '';
+        $action = $_POST['action'] ?? $_GET['action'] ?? '';
 
         match ($action) {
-            'update_status'    => $this->handleUpdateStatus(),
-            'upload_intake'    => $this->handleUploadIntake(),
-            'update_role'      => $this->handleUpdateRole(),
-            'delete_user'      => $this->handleDeleteUser(),
-            'resolve_dispute'  => $this->handleResolveDispute(),   // UC 34
+            'update_status'      => $this->handleUpdateStatus(),
+            'upload_intake'      => $this->handleUploadIntake(),
+            'update_role'        => $this->handleUpdateRole(),
+            'delete_user'        => $this->handleDeleteUser(),
+            'resolve_dispute'    => $this->handleResolveDispute(),   // UC 34
             'audit_action'     => $this->handleAuditAction(),      // UC 35
+            'check_push_roles' => $this->handleCheckPushRoles(),
             default            => $this->jsonError('Unknown action.'),
         };
     }
@@ -269,6 +294,30 @@ class AdminDashboardController {
     }
 
     // =========================================================================
+    // Action: check_push_roles
+    // =========================================================================
+    private function handleCheckPushRoles(): void {
+        header('Content-Type: application/json');
+
+        try {
+            $pushed = $this->dashboardModel->checkAndPushRoles();
+            $count = count($pushed);
+
+            echo json_encode([
+                'success' => true,
+                'message' => "Role check completed. Pushed $count users to their role tables.",
+                'pushed' => $pushed
+            ]);
+        } catch (Exception $e) {
+            echo json_encode([
+                'success' => false,
+                'message' => 'Role check failed: ' . $e->getMessage()
+            ]);
+        }
+        exit();
+    }
+
+    // =========================================================================
     // Data providers
     // =========================================================================
     public function getDashboardData(): array {
@@ -282,6 +331,51 @@ class AdminDashboardController {
             'totalPatients' => count($patients),
             'featured'      => $patients[0] ?? null,
         ];
+    }
+
+
+    public function getPatientResources(int $patientId): array {
+        return $this->patientManager->getPatientResources($patientId);
+    }
+
+    public function getAllResources(): array {
+        return $this->patientManager->getAllResources();
+    }
+
+    private function handleGetGoals(): void {
+        header('Content-Type: application/json');
+        
+        $patientId = isset($_GET['patient_id']) ? (int)$_GET['patient_id'] : 0;
+        if (!$patientId) {
+            echo json_encode(['success' => false, 'message' => 'Invalid patient ID.']);
+            exit();
+        }
+        
+        $goals = $this->patientManager->getPatientGoals($patientId);
+        echo json_encode(['success' => true, 'goals' => $goals]);
+        exit();
+    }
+
+    private function handleGetPatientResources(): void {
+        header('Content-Type: application/json');
+        
+        $patientId = isset($_GET['patient_id']) ? (int)$_GET['patient_id'] : 0;
+        if (!$patientId) {
+            echo json_encode(['success' => false, 'message' => 'Invalid patient ID.']);
+            exit();
+        }
+        
+        $resources = $this->patientManager->getPatientResources($patientId);
+        echo json_encode(['success' => true, 'resources' => $resources]);
+        exit();
+    }
+
+    private function handleGetAllResources(): void {
+        header('Content-Type: application/json');
+        
+        $resources = $this->patientManager->getAllResources();
+        echo json_encode(['success' => true, 'resources' => $resources]);
+        exit();
     }
 
     public function getRBACViewData(): array {

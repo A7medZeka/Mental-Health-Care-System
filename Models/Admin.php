@@ -302,6 +302,59 @@ class AdminPatientManager extends Admin implements AdminPatientManagerInterface 
      * @param array $details
      * @return bool
      */
+    public function getPatientGoals(int $patientId): array {
+        try {
+            $stmt = $this->conn->prepare(
+                "SELECT * FROM wellness_goals WHERE patient_id = ? ORDER BY created_at DESC"
+            );
+            $stmt->execute([$patientId]);
+            return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        } catch (Exception $e) {
+            error_log('Failed to get patient goals: ' . $e->getMessage());
+            return [];
+        }
+    }
+
+    public function getPatientResources(int $patientId): array {
+        try {
+            // Get resources based on patient's goal categories
+            $stmt = $this->conn->prepare(
+                "SELECT DISTINCT wr.* FROM wellness_resources wr
+                 INNER JOIN wellness_goals wg ON wr.category = wg.category
+                 WHERE wg.patient_id = ? AND wg.status = 'In-Progress'
+                 ORDER BY wr.category, wr.title"
+            );
+            $stmt->execute([$patientId]);
+            $resources = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+            
+            // Group by category
+            $grouped = [];
+            foreach ($resources as $resource) {
+                $category = $resource['category'];
+                if (!isset($grouped[$category])) {
+                    $grouped[$category] = [];
+                }
+                $grouped[$category][] = $resource;
+            }
+            
+            return $grouped;
+        } catch (Exception $e) {
+            error_log('Failed to get patient resources: ' . $e->getMessage());
+            return [];
+        }
+    }
+
+    public function getAllResources(): array {
+        try {
+            $stmt = $this->conn->prepare("SELECT * FROM wellness_resources ORDER BY category, title");
+            $stmt->execute();
+            return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        } catch (Exception $e) {
+            error_log('Failed to get all resources: ' . $e->getMessage());
+            return [];
+        }
+    }
+
     private function logAuditEntry(string $action, array $details): bool {
         try {
             $stmt = $this->conn->prepare(
@@ -321,15 +374,10 @@ class AdminPatientManager extends Admin implements AdminPatientManagerInterface 
     }
 }
 
-// =============================================================================
-// RBAC Management – role promotion and user deletion
-// =============================================================================
+
 class AdminRBACManager extends Admin implements AdminRBACManagerInterface {
 
-    /**
-     * Allowed role-promotion paths.
-     * null  = this role is locked and cannot be promoted.
-     */
+
     private const ALLOWED_TRANSITIONS = [
         'Therapist' => 'Moderator',
         'Moderator' => 'Admin',
@@ -337,14 +385,7 @@ class AdminRBACManager extends Admin implements AdminRBACManagerInterface {
         'Admin'     => null,
     ];
 
-    // =========================================================================
-    // Query: all users needed by the RBAC view
-    // =========================================================================
 
-    /**
-     * Returns every user ordered by role then username,
-     * ready for the RBAC table.
-     */
     public function getAllUsersForView(): array {
         $stmt = $this->conn->query(
             'SELECT user_id, username, email, `role` FROM users ORDER BY role, username'
@@ -352,31 +393,10 @@ class AdminRBACManager extends Admin implements AdminRBACManagerInterface {
         return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
     }
 
-    // =========================================================================
-    // Business logic: promote a user to the next allowed role
-    // RBAC Panel SD flow:
-    //   Admin → promoteUser(targetId, newRole)
-    //     → SD Step 1: RBAC access check
-    //     → SD Step 2: fetch current role
-    //     → SD Step 3: validate transition rules
-    //     → SD Step 4: [alt] conflict check — cannot promote self
-    //     → SD Step 5: persist role change
-    //     → SD Step 6: log RBAC action
-    // =========================================================================
-
-    /**
-     * Validates the transition rules and performs the UPDATE.
-     *
-     * @param int    $targetId  user_id of the user being promoted
-     * @param string $newRole   requested new role (comes from POST, already trimmed)
-     * @return array ['success' => bool, 'message' => string, ...]
-     */
     public function promoteUser(int $targetId, string $newRole): array {
-        // SD Step 1: RBAC access check
         if (!$this->validateAdminAccess()) {
             return ['success' => false, 'message' => 'Access denied. Admin role required.'];
         }
-        // ── Fetch current state ───────────────────────────────────────────────
         $stmt = $this->conn->prepare('SELECT `role`, username FROM users WHERE user_id = ?');
         $stmt->execute([$targetId]);
         $target = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -388,7 +408,6 @@ class AdminRBACManager extends Admin implements AdminRBACManagerInterface {
         $currentRole = $target['role'];
         $allowedNext = self::ALLOWED_TRANSITIONS[$currentRole] ?? null;
 
-        // ── Transition rules ──────────────────────────────────────────────────
         if ($allowedNext === null) {
             return [
                 'success' => false,
@@ -403,9 +422,10 @@ class AdminRBACManager extends Admin implements AdminRBACManagerInterface {
             ];
         }
 
-        // ── Persist ───────────────────────────────────────────────────────────
         $update = $this->conn->prepare("UPDATE users SET `role` = ? WHERE user_id = ?");
         $update->execute([$newRole, $targetId]);
+
+        $this->handleRoleTableChanges($targetId, $currentRole, $newRole);
 
         // Log the promotion using admin's User variables
         $this->logRBACAction('user_promotion', [
@@ -422,6 +442,48 @@ class AdminRBACManager extends Admin implements AdminRBACManagerInterface {
             'message'  => "\"{$target['username']}\" promoted from {$currentRole} to {$newRole}.",
             'new_role' => $newRole,
         ];
+    }
+
+
+    private function handleRoleTableChanges(int $userId, string $oldRole, string $newRole): void {
+        // Remove from old role table if applicable
+        if ($oldRole === 'Patient') {
+            $this->conn->prepare("DELETE FROM patients WHERE patient_id = ?")->execute([$userId]);
+        } elseif ($oldRole === 'Therapist') {
+            $this->conn->prepare("DELETE FROM therapists WHERE therapist_id = ?")->execute([$userId]);
+        } elseif ($oldRole === 'Moderator') {
+            $this->conn->prepare("DELETE FROM moderators WHERE moderator_id = ?")->execute([$userId]);
+        } elseif ($oldRole === 'Admin') {
+            $this->conn->prepare("DELETE FROM admins WHERE admin_id = ?")->execute([$userId]);
+        }
+
+        // Add to new role table if applicable
+        if ($newRole === 'Admin') {
+            $check = $this->conn->prepare("SELECT admin_id FROM admins WHERE admin_id = ?");
+            $check->execute([$userId]);
+            if (!$check->fetch()) {
+                $this->conn->prepare("INSERT INTO admins (admin_id) VALUES (?)")->execute([$userId]);
+            }
+        } elseif ($newRole === 'Moderator') {
+            // Check if already exists
+            $check = $this->conn->prepare("SELECT moderator_id FROM moderators WHERE moderator_id = ?");
+            $check->execute([$userId]);
+            if (!$check->fetch()) {
+                $this->conn->prepare("INSERT INTO moderators (moderator_id) VALUES (?)")->execute([$userId]);
+            }
+        } elseif ($newRole === 'Therapist') {
+            // Check if already exists
+            $check = $this->conn->prepare("SELECT therapist_id FROM therapists WHERE therapist_id = ?");
+            $check->execute([$userId]);
+            if (!$check->fetch()) {
+                $licenseExpiryDate = date('Y-m-d', strtotime('+1 year'));
+                $this->conn->prepare("
+                    INSERT INTO therapists 
+                    (therapist_id, specialization, languages, license_status, license_expiry_date, experience_years, rating, hourly_rate, availability_schedule, credential_file_path, is_verified)
+                    VALUES (?, '', 'English', 'Active', ?, 0, 0.0, 0.0, '', '', 0)
+                ")->execute([$userId, $licenseExpiryDate]);
+            }
+        }
     }
 
     // =========================================================================

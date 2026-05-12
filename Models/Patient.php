@@ -21,10 +21,20 @@ class Patient extends User implements
     // new edit i did not put setters cause you have already updatePreferences so you dont need it
     // but if there is a problem try to put setters
     protected $pref_language;
+    protected $pref_therapist_gender;
+    protected $pref_cultural_background;
     protected $pref_specialization;
 
     public function getPrefLanguage() {
         return $this->pref_language;
+    }
+
+    public function getPrefTherapistGender() {
+        return $this->pref_therapist_gender;
+    }
+
+    public function getPrefCulturalBackground() {
+        return $this->pref_cultural_background;
     }
 
     public function getPrefSpecialization() {
@@ -34,7 +44,7 @@ class Patient extends User implements
     // This method loads the preferences from your 'patients' database table
     public function loadPatientData($patient_id) {
         $stmt = $this->conn->prepare(
-            "SELECT pref_language, pref_specialization 
+            "SELECT pref_language, pref_therapist_gender, pref_cultural_background, pref_specialization
              FROM patients 
              WHERE patient_id = ?"
         );
@@ -43,8 +53,10 @@ class Patient extends User implements
 
         if ($data) {
             $this->user_id = $patient_id;
-            $this->pref_language = $data['pref_language'];
-            $this->pref_specialization = $data['pref_specialization'];
+            $this->pref_language = $data['pref_language'] ?? '';
+            $this->pref_specialization = $data['pref_specialization'] ?? '';
+            $this->pref_therapist_gender = $data['pref_therapist_gender'] ?? '';
+            $this->pref_cultural_background = $data['pref_cultural_background'] ?? '';
             return true;
         }
         return false;
@@ -317,6 +329,21 @@ class PatientAppointmentManager extends Patient implements PatientAppointmentInt
         );
         $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    }
+
+    public function getMyTherapist(int $patientId): ?array
+    {
+        $stmt = $this->conn->prepare("
+            SELECT u.user_id, u.first_name, u.last_name, u.email,
+                   t.specialization, t.languages, t.rating
+            FROM therapist_matches tm
+            JOIN users u ON u.user_id = tm.therapist_id
+            JOIN therapists t ON t.therapist_id = tm.therapist_id
+            WHERE tm.patient_id = ? AND tm.status = 'Accepted'
+            LIMIT 1
+        ");
+        $stmt->execute([$patientId]);
+        return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
     }
 }
 
@@ -652,6 +679,13 @@ class PatientResourceManager extends Patient implements PatientResourceInterface
              VALUES (?, ?, ?, NOW())"
         );
         return $stmt->execute([$patientId, $resourceId, $durationMinutes]);
+    }
+
+    public function getResourcesByGoalCategories(int $patientId): array
+    {
+        require_once __DIR__ . '/Repositories/ResourceRepository.php';
+        $resourceRepo = new ResourceRepository();
+        return $resourceRepo->getResourcesGroupedByCategory($patientId);
     }
 }
 

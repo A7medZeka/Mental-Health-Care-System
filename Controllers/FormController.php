@@ -10,8 +10,13 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit();
 }
 
+error_log('[FormController] Request received, method: ' . $_SERVER['REQUEST_METHOD']);
+error_log('[FormController] POST data: ' . print_r($_POST, true));
+
 $db     = getConnection();
 $action = trim($_POST['action'] ?? '');
+
+error_log('[FormController] Action: ' . $action);
 
 function redirectWith(string $location, string $type, string $message, string $activeForm = ''): void {
     $_SESSION[$type . '_message'] = $message;
@@ -111,8 +116,11 @@ class FormController {
 class LoginController extends FormController {
     
     public function handleLogin() {
+        error_log('[Login] handleLogin method called');
         $email    = trim($_POST['email']    ?? '');
         $password =      $_POST['password'] ?? '';
+        
+        error_log('[Login] Email: ' . $email . ', Password length: ' . strlen($password));
 
         if (empty($email) || empty($password))
             redirectWith('../Views/Auth/login.php', 'error', 'Please enter both email and password.', 'login');
@@ -487,6 +495,7 @@ $action = trim($_POST['action'] ?? '');
 
 switch ($action) {
     case 'login':
+        error_log('[Login] Login action received');
         $loginController = new LoginController($db);
         $loginController->handleLogin();
         break;

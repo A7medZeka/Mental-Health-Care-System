@@ -27,6 +27,7 @@ $payments            = $controller->getPayments();
 $insurance           = $controller->getInsurance();
 $consents            = $controller->getConsents();
 $resources           = $controller->getResources();
+$goalResources       = $controller->getResourcesByGoalCategories();
 $notifications       = $controller->getNotifications();
 $unreadNotifs        = $controller->getUnreadNotifCount();
 $intakeStatus        = $controller->getIntakeStatus();
@@ -67,7 +68,7 @@ $intakeStatus        = $controller->getIntakeStatus();
           <li class="nav-item"><a class="nav-link" href="forum.php"><i class="bi bi-chat-square-heart me-2"></i>Community Forum</a></li>
           <li class="nav-item"><a class="nav-link" data-section="section-payments" href="#" onclick="showSection('section-payments'); return false;"><i class="bi bi-credit-card me-2"></i>Payments &amp; Insurance</a></li>
           <li class="nav-item"><a class="nav-link" data-section="section-consents" href="#" onclick="showSection('section-consents'); return false;"><i class="bi bi-file-earmark-check me-2"></i>Legal Consents</a></li>
-          <li class="nav-item"><a class="nav-link" data-section="section-emergency" href="#" style="color:#dc3545;" onclick="showSection('section-emergency'); return false;"><i class="bi bi-telephone-fill me-2" style="color:#dc3545;"></i><span style="color:#dc3545;">🆘 Emergency Help</span></a></li>
+          <li class="nav-item"><a class="nav-link" data-section="section-emergency" href="#" style="color:#dc3545;" onclick="showSection('section-emergency'); return false;"><i class="bi bi-telephone-fill me-2" style="color:#dc3545;"></i><span style="color:#dc3545;">🚨 Crisis Support</span></a></li>
         </ul>
         <div class="px-2 pb-3 pt-2 border-top mt-2">
           <a href="../Auth/logout.php" class="nav-link text-danger"><i class="bi bi-box-arrow-right me-2"></i>Logout</a>
@@ -87,7 +88,14 @@ $intakeStatus        = $controller->getIntakeStatus();
           <div class="row g-4 mb-4">
             <div class="col-md-6 col-lg-3">
               <div class="card card-custom h-100"><div class="card-body d-flex justify-content-between align-items-center">
-                <div><h6 class="text-secondary-custom mb-2">Next Appointment</h6><h3 class="fw-bold text-primary-custom mb-0"><?php echo $dashboardData['next_appointment']; ?></h3></div>
+                <div><h6 class="text-secondary-custom mb-2">Next Appointment</h6><h3 class="fw-bold text-primary-custom mb-0"><?php 
+                  $nextAppt = !empty($upcomingAppts) ? $upcomingAppts[0] : null;
+                  if ($nextAppt) {
+                      echo date('M j, Y', strtotime($nextAppt['appointment_date']));
+                  } else {
+                      echo 'None scheduled';
+                  }
+                ?></h3></div>
                 <div class="bg-light-green p-3 rounded-circle text-primary-custom"><i class="bi bi-calendar-check fs-4"></i></div>
               </div></div>
             </div>
@@ -105,7 +113,17 @@ $intakeStatus        = $controller->getIntakeStatus();
                   };
                   echo ' ' . htmlspecialchars($dashboardData['today_mood'] ?: 'Not logged');
                 ?></h3></div>
-                <div class="bg-light-green p-3 rounded-circle text-primary-custom"><i class="bi bi-emoji-smile fs-4"></i></div>
+                <div class="bg-light-green p-3 rounded-circle text-primary-custom d-flex align-items-center justify-content-center"><?php
+                  $moodIconScore = $dashboardData['today_mood_score'] ?? 0;
+                  echo match(true) {
+                      $moodIconScore >= 5 => '<span style="font-size: 1.5rem;">😄</span>',
+                      $moodIconScore >= 4 => '<span style="font-size: 1.5rem;">😊</span>',
+                      $moodIconScore >= 3 => '<span style="font-size: 1.5rem;">😐</span>',
+                      $moodIconScore >= 2 => '<span style="font-size: 1.5rem;">😟</span>',
+                      $moodIconScore >= 1 => '<span style="font-size: 1.5rem;">😢</span>',
+                      default         => '<span style="font-size: 1.5rem;">😐</span>'
+                  };
+                ?></div>
               </div></div>
             </div>
             <div class="col-md-6 col-lg-3">
@@ -130,11 +148,12 @@ $intakeStatus        = $controller->getIntakeStatus();
                   <div class="d-flex justify-content-between mb-2"><span class="text-secondary-custom">Overall Completion</span><span class="fw-bold text-primary-custom"><?php echo $dashboardData['onboarding_progress']; ?>%</span></div>
                   <div class="progress mb-4" style="height:10px;"><div class="progress-bar bg-success" style="width:<?php echo $dashboardData['onboarding_progress']; ?>%"></div></div>
                   <div class="row g-3">
-                    <div class="col-md-6"><i class="bi bi-check-circle-fill text-success me-2"></i>Profile Created</div>
-                    <div class="col-md-6"><i class="bi bi-check-circle-fill text-success me-2"></i>Insurance Verified</div>
-                    <div class="col-md-6"><i class="bi bi-check-circle-fill text-success me-2"></i>Consents Signed</div>
-                    <div class="col-md-6"><i class="bi bi-exclamation-circle-fill text-warning me-2"></i>Intake Form Pending</div>
-                    <div class="col-md-6"><i class="bi bi-exclamation-circle-fill text-warning me-2"></i>Payment Method Pending</div>
+                    <?php foreach ($onboardingChecklist as $i => [$title, $desc, $status]): ?>
+                      <div class="col-md-6">
+                        <i class="bi <?php echo $status === 'Completed' ? 'bi-check-circle-fill text-success' : 'bi-exclamation-circle-fill text-warning'; ?> me-2"></i>
+                        <?php echo htmlspecialchars($title); ?>
+                      </div>
+                    <?php endforeach; ?>
                   </div>
                   <div class="mt-3"><a href="#" onclick="showSection('section-onboarding'); return false;" class="text-primary-custom fw-semibold">View Full Checklist <i class="bi bi-arrow-right"></i></a></div>
                 </div>
@@ -150,7 +169,7 @@ $intakeStatus        = $controller->getIntakeStatus();
                   <button type="button" class="btn btn-primary-custom" onclick="showSection('section-appointments'); return false;"><i class="bi bi-calendar-plus me-1"></i> Book Appointment</button>
                   <button type="button" class="btn btn-primary-custom" onclick="showSection('section-mood'); return false;"><i class="bi bi-heart me-1"></i> Log Mood</button>
                   <button type="button" class="btn btn-primary-custom" onclick="showSection('section-therapist'); return false;"><i class="bi bi-person me-1"></i> View My Therapist</button>
-                  <button type="button" class="btn btn-danger" onclick="showSection('section-emergency'); return false;">🆘 Get Help Now</button>
+                  <button type="button" class="btn btn-danger" onclick="showSection('section-emergency'); return false;">🚨 Get Help Now</button>
                 </div>
               </div>
             </div>
@@ -165,9 +184,18 @@ $intakeStatus        = $controller->getIntakeStatus();
                     <?php if (empty($recentActivity)): ?>
                       <li class="list-group-item text-secondary-custom">No recent activity yet.</li>
                     <?php else: foreach ($recentActivity as $act): ?>
+                      <?php
+                        $act = is_array($act) ? $act : [];
+                        $actType = isset($act['type']) ? $act['type'] : '';
+                        $actIcon = isset($act['icon'])
+                          ? $act['icon']
+                          : ($actType === 'appointment' ? 'calendar-event' : ($actType === 'mood' ? 'emoji-smile' : 'clock-history'));
+                        $actText = isset($act['text']) ? $act['text'] : (isset($act['description']) ? $act['description'] : '');
+                        $actDate = isset($act['date']) ? $act['date'] : '';
+                      ?>
                       <li class="list-group-item d-flex justify-content-between">
-                        <span><i class="bi bi-<?= htmlspecialchars($act['icon']) ?> text-primary-custom me-2"></i><?= htmlspecialchars($act['text']) ?></span>
-                        <small class="text-secondary-custom"><?= htmlspecialchars($act['date']) ?></small>
+                        <span><i class="bi bi-<?= htmlspecialchars($actIcon) ?> text-primary-custom me-2"></i><?= htmlspecialchars($actText) ?></span>
+                        <small class="text-secondary-custom"><?= htmlspecialchars($actDate) ?></small>
                       </li>
                     <?php endforeach; endif; ?>
                   </ul>
@@ -207,6 +235,12 @@ $intakeStatus        = $controller->getIntakeStatus();
                       <div><span class="badge bg-warning text-dark me-2">Pending</span><button type="button" class="btn btn-sm btn-primary-custom" onclick="window.open('intake-form.php','_blank')">Start Now</button></div>
                     <?php elseif ($status === 'Pending' && $title === 'Add Payment Method'): ?>
                       <div><span class="badge bg-warning text-dark me-2">Pending</span><button type="button" class="btn btn-sm btn-primary-custom" data-bs-toggle="modal" data-bs-target="#paymentModal">Add Now</button></div>
+                    <?php elseif ($status === 'Pending' && $title === 'Sign Consent'): ?>
+                      <div><span class="badge bg-warning text-dark me-2">Pending</span><button type="button" class="btn btn-sm btn-primary-custom" onclick="showSection('section-sessions')">Sign Now</button></div>
+                    <?php elseif ($status === 'Pending' && $title === 'Get Matched with Therapist'): ?>
+                      <div><span class="badge bg-warning text-dark me-2">Pending</span><button type="button" class="btn btn-sm btn-primary-custom" onclick="showSection('section-therapist')">Browse Therapists</button></div>
+                    <?php elseif ($status === 'Pending' && $title === 'Schedule First Appointment'): ?>
+                      <div><span class="badge bg-warning text-dark me-2">Pending</span><button type="button" class="btn btn-sm btn-primary-custom" onclick="showSection('section-appointments')">Schedule Now</button></div>
                     <?php else: ?>
                       <span class="badge bg-<?= $color ?>"><?= htmlspecialchars($status) ?></span>
                     <?php endif; ?>
@@ -251,7 +285,11 @@ $intakeStatus        = $controller->getIntakeStatus();
                   <p class="text-secondary-custom small mt-3 mb-0"><i class="bi bi-shield-lock me-1"></i> Direct contact details are never shared. All communication is platform-only.</p>
                   <?php else: ?>
                   <div class="mt-3">
-                    <button type="button" class="btn btn-primary-custom" onclick="window.open('intake-form.php','_blank')"><i class="bi bi-clipboard-check me-1"></i> Complete Intake Form to Get Matched</button>
+                    <?php if (!empty($intakeStatus)): ?>
+                      <button type="button" class="btn btn-primary-custom" onclick="requestTherapistMatch()"><i class="bi bi-person-check me-1"></i> Find Therapist Match Now</button>
+                    <?php else: ?>
+                      <button type="button" class="btn btn-primary-custom" onclick="window.open('intake-form.php','_blank')"><i class="bi bi-clipboard-check me-1"></i> Complete Intake Form to Get Matched</button>
+                    <?php endif; ?>
                   </div>
                   <?php endif; ?>
                 </div>
@@ -394,7 +432,19 @@ $intakeStatus        = $controller->getIntakeStatus();
                   <div class="text-center py-5">
                     <i class="bi bi-camera-video text-primary-custom" style="font-size:4rem;"></i>
                     <p class="text-secondary-custom mt-3 mb-4">Your session hasn't started yet. You can check in up to 5 minutes before.</p>
-                    <button type="button" class="btn btn-primary-custom btn-lg" onclick="patientCheckIn()"><i class="bi bi-box-arrow-in-right me-1"></i> Check In &amp; Enter Waiting Room</button>
+                    <button
+                      id="btnPatientCheckIn"
+                      type="button"
+                      class="btn btn-primary-custom btn-lg"
+                      data-session-id="<?= (int)($nextSession['session_id'] ?? 0) ?>"
+                      onclick="patientCheckIn()"
+                      <?= empty($nextSession['session_id']) ? 'disabled' : '' ?>
+                    ><i class="bi bi-box-arrow-in-right me-1"></i> Check In &amp; Enter Waiting Room</button>
+                    <?php if (!empty($nextSession['meeting_link'])): ?>
+                      <div class="mt-3">
+                        <a class="btn btn-outline-primary" href="<?= htmlspecialchars($nextSession['meeting_link']) ?>" target="_blank" rel="noopener">Open Meeting Link</a>
+                      </div>
+                    <?php endif; ?>
                   </div>
                 </div>
 
@@ -608,18 +658,66 @@ $intakeStatus        = $controller->getIntakeStatus();
             <h2 class="fw-bold text-primary-custom mb-0">Wellness Resources</h2>
             <span class="text-secondary-custom"><i class="bi bi-person-circle me-1"></i> <?= htmlspecialchars($first_name . ' ' . $last_name) ?></span>
           </div>
+          
+          <!-- Resources Based on Your Goals -->
+          <?php if (!empty($goalResources)): ?>
+            <div class="row g-4 mb-4">
+              <?php foreach ($goalResources as $category => $categoryResources): ?>
+                <div class="col-12">
+                  <div class="card card-custom">
+                    <div class="card-header bg-white border-0 pt-4 pb-0 d-flex align-items-center">
+                      <h5 class="fw-bold text-primary-custom mb-0">
+                        <i class="bi bi-bullseye me-2"></i><?= htmlspecialchars($category) ?> Resources
+                      </h5>
+                      <span class="badge bg-light text-secondary-custom ms-auto">Based on your goals</span>
+                    </div>
+                    <div class="card-body">
+                      <div class="row g-3">
+                        <?php 
+                          $resIcons = ['Mindfulness'=>'lungs','Therapy'=>'book','Audio'=>'music-note-beamed','Exercise'=>'bicycle','Sleep'=>'moon','Nutrition'=>'heart-pulse','Stress'=>'shield-check'];
+                          $resActions = ['Timer'=>'startMindfulnessTimer(5)','PDF'=>"showToast('Opening resource...','success')",'Audio'=>"showToast('Playing...','success')",'Video'=>"showToast('Loading video...','success')"];
+                          foreach ($categoryResources as $res):
+                            $icon   = $resIcons[$res['category']] ?? 'star';
+                            $action = $resActions[$res['resource_type']] ?? "showToast('Opening...','success')";
+                            $btnLabel = match($res['resource_type']) { 'Timer'=>'Start Timer', 'PDF'=>'Open', 'Audio'=>'Play', 'Video'=>'Watch', default=>'Open' };
+                        ?>
+                          <div class="col-md-6 col-lg-4">
+                            <div class="card card-custom h-100 p-3">
+                              <div class="d-flex align-items-start">
+                                <div class="bg-light-green rounded-circle d-flex align-items-center justify-content-center me-3" style="width:50px;height:50px;flex-shrink:0;">
+                                  <i class="bi bi-<?= $icon ?> text-primary-custom fs-5"></i>
+                                </div>
+                                <div class="flex-grow-1">
+                                  <h6 class="fw-bold text-primary-custom mb-1"><?= htmlspecialchars($res['title']) ?></h6>
+                                  <span class="badge mb-2" style="background-color:var(--primary-green);"><?= htmlspecialchars($res['category']) ?></span>
+                                  <p class="small text-secondary-custom mb-3"><?= htmlspecialchars(mb_substr($res['description'] ?? '', 0, 80)) ?></p>
+                                  <button type="button" class="btn btn-sm btn-primary-custom" onclick="<?= $action ?>; useResource(<?= $res['resource_id'] ?>, 5)"><?= $btnLabel ?></button>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        <?php endforeach; ?>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              <?php endforeach; ?>
+            </div>
+          <?php endif; ?>
+
+          <!-- All Resources Section -->
           <div class="row g-4 mb-4"><div class="col-12">
             <div class="card card-custom">
               <div class="card-header bg-white border-0 pt-4 pb-0 d-flex align-items-center">
-                <h5 class="fw-bold text-primary-custom mb-0">Recommended For You</h5>
-                <span class="badge bg-light text-secondary-custom ms-auto">Based on your mood</span>
+                <h5 class="fw-bold text-primary-custom mb-0">All Resources</h5>
+                <span class="badge bg-light text-secondary-custom ms-auto">Browse complete library</span>
               </div>
               <div class="card-body">
                 <div class="row g-3">
                   <?php if (empty($resources)): ?>
                     <div class="col-12"><p class="text-center text-muted py-4">No resources available.</p></div>
                   <?php else:
-                    $resIcons = ['Mindfulness'=>'lungs','Therapy'=>'book','Audio'=>'music-note-beamed','Exercise'=>'bicycle'];
+                    $resIcons = ['Mindfulness'=>'lungs','Therapy'=>'book','Audio'=>'music-note-beamed','Exercise'=>'bicycle','Sleep'=>'moon','Nutrition'=>'heart-pulse','Stress'=>'shield-check'];
                     $resActions = ['Timer'=>'startMindfulnessTimer(5)','PDF'=>"showToast('Opening resource...','success')",'Audio'=>"showToast('Playing...','success')",'Video'=>"showToast('Loading video...','success')"];
                     foreach ($resources as $res):
                       $icon   = $resIcons[$res['category']] ?? 'star';
@@ -812,8 +910,8 @@ $intakeStatus        = $controller->getIntakeStatus();
         <!-- EMERGENCY -->
         <div id="section-emergency" style="display:none;">
           <div class="d-flex justify-content-between align-items-center mb-4">
-            <h2 class="fw-bold text-primary-custom mb-0">Emergency Help</h2>
-            <span class="text-secondary-custom"><i class="bi bi-person-circle me-1"></i> Patient: Sarah Johnson</span>
+            <h2 class="fw-bold text-primary-custom mb-0">Crisis Support</h2>
+            <span class="text-secondary-custom"><i class="bi bi-person-circle me-1"></i> Patient: <?= htmlspecialchars($first_name . ' ' . $last_name) ?></span>
           </div>
           <div class="row"><div class="col-12">
             <div class="p-5 mb-4 rounded text-white text-center" style="background: linear-gradient(135deg, #F4B41A 0%, #dc3545 100%);">
@@ -864,9 +962,17 @@ $intakeStatus        = $controller->getIntakeStatus();
   <div class="modal fade" id="bookAppointmentModal" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content">
     <div class="modal-header"><h5 class="modal-title">Book New Appointment</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
     <div class="modal-body">
+      <div class="mb-3">
+        <label class="form-label">Therapist</label>
+        <select id="apptTherapist" class="form-select" name="apptTherapist">
+          <?php foreach ($availTherapists as $t): ?>
+            <option value="<?= (int)$t['user_id'] ?>"><?= htmlspecialchars($t['first_name'] . ' ' . $t['last_name'] . ' — ' . ($t['specialization'] ?? '')) ?></option>
+          <?php endforeach; ?>
+        </select>
+      </div>
       <div class="mb-3"><label class="form-label">Preferred Date</label><input id="apptDate" type="date" class="form-control" name="apptDate"></div>
       <div class="mb-3"><label class="form-label">Preferred Time Slot</label><select class="form-select"><option>9:00 AM</option><option>10:00 AM</option><option>11:00 AM</option><option>2:00 PM</option><option>3:00 PM</option><option>4:00 PM</option></select></div>
-      <div class="mb-3"><label class="form-label">Session Type</label><select class="form-select"><option>Video Session</option><option>In-Person</option></select></div>
+      <div class="mb-3"><label class="form-label">Session Type</label><select id="apptType" class="form-select"><option>Video Session</option><option>In-Person</option></select></div>
       <button type="button" class="btn btn-outline-secondary w-100 mb-2" onclick="checkAvailability()">Check Availability</button>
       <div id="availabilityResult" style="display:none;"></div>
     </div>

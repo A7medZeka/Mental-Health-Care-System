@@ -1,6 +1,9 @@
 <?php
 require_once __DIR__ . '/../../Interfaces/Observer/IObserver.php';
 require_once __DIR__ . '/../Services/NotificationService.php';
+require_once __DIR__ . '/../../Core/SingletonDatabase.php';
+
+use Interfaces\Observer\IObserver;
 
 /**
  * PatientObserver - Implements Observer Pattern
@@ -8,14 +11,14 @@ require_once __DIR__ . '/../Services/NotificationService.php';
  */
 class PatientObserver implements IObserver {
     private int $patientId;
-    private NotificationService $notificationService;
+    private $database;
 
-    public function __construct(int $patientId, ?NotificationService $notificationService = null) {
+    public function __construct(int $patientId) {
         $this->patientId = $patientId;
-        $this->notificationService = $notificationService ?? new NotificationService();
-        
+        $this->database = SingletonDatabase::getInstance();
+
         // Register with NotificationService
-        $this->notificationService->registerObserver($this);
+        NotificationService::getInstance()->registerObserver($this);
     }
 
     /**
@@ -26,7 +29,11 @@ class PatientObserver implements IObserver {
             "You have been matched with therapist %s! View their profile to schedule your first session.",
             $data['therapist_name'] ?? 'a qualified professional'
         );
-        $this->notificationService->queueNotification($this->patientId, $message, 'MatchFound');
+
+        $this->database->execute(
+            "INSERT INTO notifications (user_id, message, type, created_at) VALUES (?, ?, ?, NOW())",
+            [$this->patientId, $message, 'match_found']
+        );
     }
 
     /**
@@ -36,9 +43,13 @@ class PatientObserver implements IObserver {
         if ($data['patient_id'] === $this->patientId) {
             $message = sprintf(
                 "Reminder: You have a session scheduled for %s.",
-                $data['session_time'] ?? ($data['appointment_date'] ?? 'soon')
+                $data['session_time'] ?? 'soon'
             );
-            $this->notificationService->queueNotification($this->patientId, $message, 'SessionReminder');
+
+            $this->database->execute(
+                "INSERT INTO notifications (user_id, message, type, created_at) VALUES (?, ?, ?, NOW())",
+                [$this->patientId, $message, 'session_reminder']
+            );
         }
     }
 
@@ -52,7 +63,11 @@ class PatientObserver implements IObserver {
                 $data['badge_type'] ?? 'Achievement',
                 $data['achievement_reason'] ?? 'your progress'
             );
-            $this->notificationService->queueNotification($this->patientId, $message, 'BadgeAwarded');
+
+            $this->database->execute(
+                "INSERT INTO notifications (user_id, message, type, created_at) VALUES (?, ?, ?, NOW())",
+                [$this->patientId, $message, 'badge_awarded']
+            );
         }
     }
 
@@ -65,7 +80,11 @@ class PatientObserver implements IObserver {
                 "Good news! A slot has opened up with %s. You can now book your session.",
                 $data['therapist_name'] ?? 'your preferred therapist'
             );
-            $this->notificationService->queueNotification($this->patientId, $message, 'WaitlistAvailable');
+
+            $this->database->execute(
+                "INSERT INTO notifications (user_id, message, type, created_at) VALUES (?, ?, ?, NOW())",
+                [$this->patientId, $message, 'waitlist_available']
+            );
         }
     }
 
@@ -78,32 +97,28 @@ class PatientObserver implements IObserver {
             case 'match_found':
                 $this->handleMatchFound($data);
                 break;
-                
+
             case 'SESSION_REMINDER':
             case 'session_reminder':
                 $this->handleSessionReminder($data);
                 break;
-                
+
             case 'BADGE_AWARDED':
             case 'badge_awarded':
                 $this->handleBadgeAwarded($data);
                 break;
-                
-            case 'WAITLIST_AVAILABLE':
+
             case 'WAITLIST_SLOT_FREED':
             case 'waitlist_available':
                 $this->handleWaitlistNotified($data);
                 break;
-                
+
             default:
                 error_log("PatientObserver: Unknown event '$event' received");
                 break;
         }
     }
 
-    /**
-     * Get patient ID
-     */
     public function getPatientId(): int {
         return $this->patientId;
     }
@@ -112,6 +127,6 @@ class PatientObserver implements IObserver {
      * Cleanup - unregister from NotificationService
      */
     public function __destruct() {
-        $this->notificationService->removeObserver($this);
+        NotificationService::getInstance()->removeObserver($this);
     }
 }

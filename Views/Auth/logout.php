@@ -1,8 +1,10 @@
 <?php
+error_log('[Logout] Logout script accessed');
 session_start();
 
 // Unset all session variables
 $_SESSION = [];
+error_log('[Logout] Session variables cleared');
 
 // Destroy the session
 session_destroy();
@@ -16,7 +18,7 @@ if (ini_get("session.use_cookies")) {
     );
 }
 
-// Redirect to login page with full path
+// Redirect to login page with absolute path
 header("Location: login.php");
 exit();
 ?>

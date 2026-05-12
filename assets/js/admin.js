@@ -127,4 +127,40 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
+    // 6. Check Role Consistency
+    const checkRolesBtn = document.getElementById('checkRolesBtn');
+    if (checkRolesBtn) {
+        checkRolesBtn.addEventListener('click', () => {
+            // Disable button during request
+            checkRolesBtn.disabled = true;
+            checkRolesBtn.innerHTML = '<i class="bi bi-hourglass-split me-2"></i>Checking...';
+
+            // Make AJAX request
+            fetch('dashboard.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: 'action=check_push_roles'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showToast(data.message, 'success');
+                } else {
+                    showToast('Error: ' + data.message, 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showToast('An error occurred while checking roles.', 'error');
+            })
+            .finally(() => {
+                // Re-enable button
+                checkRolesBtn.disabled = false;
+                checkRolesBtn.innerHTML = '<i class="bi bi-check-circle me-2"></i>Check Role Consistency';
+            });
+        });
+    }
+
 });

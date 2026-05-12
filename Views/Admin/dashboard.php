@@ -2,7 +2,7 @@
 require_once __DIR__ . '/../../Controllers/AdminDashboardController.php';
 
 $controller = new AdminDashboardController();
-$dashboardData = $controller->handleRequest();
+$dashboardData = $controller->handleRequest();  // exits on POST/redirect
 $userData = $controller->getUserData();
 
 $role = $userData['role'] ?? 'Admin';
@@ -173,6 +173,7 @@ $high_risk_alert = $dashboardData['high_risk_alerts'] ?? 0;
                                     <a href="../Auth/therapist-register.php" class="btn btn-success"><i class="bi bi-plus-circle me-2"></i>Add Therapist</a>
                                     <a href="therapists.php" class="btn btn-primary-custom"><i class="bi bi-arrow-right-circle me-2"></i>Manage Therapists</a>
                                     <a href="rbac.php" class="btn btn-primary-custom"><i class="bi bi-arrow-right-circle me-2"></i>Configure RBAC</a>
+                                    <button id="checkRolesBtn" class="btn btn-warning"><i class="bi bi-check-circle me-2"></i>Check Role Consistency</button>
                                 </div>
                             </div>
                         </div>

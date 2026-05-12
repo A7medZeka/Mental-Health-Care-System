@@ -77,6 +77,8 @@ class PatientDashboardController
 
     private function handlePost(): void
     {
+        ini_set('display_errors', '0');
+        ini_set('html_errors', '0');
         $action = $_POST['action'] ?? '';
 
         match ($action) {
@@ -84,9 +86,13 @@ class PatientDashboardController
             'update_profile'     => $this->handleUpdateProfile(),
             'update_preferences' => $this->handleUpdatePreferences(),
 
+            // Matching
+            'request_match'      => $this->handleRequestMatch(),
+
             // Appointments
             'book_appointment'   => $this->handleBookAppointment(),
             'cancel_appointment' => $this->handleCancelAppointment(),
+            'check_availability' => $this->handleCheckAvailability(),
 
             // Mood
             'log_mood'           => $this->handleLogMood(),
@@ -112,6 +118,9 @@ class PatientDashboardController
 
             // Notifications
             'mark_read'          => $this->handleMarkNotificationsRead(),
+
+            // Sessions
+            'session_checkin'    => $this->handleSessionCheckIn(),
 
             // Intake Form
             'submit_intake'      => $this->handleSubmitIntake(),
@@ -156,6 +165,99 @@ class PatientDashboardController
         exit();
     }
 
+    private function handleRequestMatch(): void
+    {
+        header('Content-Type: application/json');
+        if (ob_get_length()) { ob_clean(); }
+        $patientId = (int)$_SESSION['user_id'];
+
+        $intake = $this->patientModel->getIntakeFormStatus($patientId);
+        if (empty($intake)) {
+            echo json_encode(['success' => false, 'message' => 'Complete your intake form first.']);
+            exit();
+        }
+
+        $existing = $this->apptManager->getMyTherapist($patientId);
+        if (!empty($existing)) {
+            echo json_encode(['success' => true, 'message' => 'You already have an assigned therapist.']);
+            exit();
+        }
+
+        try {
+            require_once __DIR__ . '/../Models/Services/MatchingService.php';
+            $conn = SingletonDatabase::getInstance()->getConnection();
+
+            $this->patientModel->loadPatientData($patientId);
+
+            $matchingService = new MatchingService();
+            $candidates = $matchingService->filterTherapists($this->patientModel);
+            $ranked = $matchingService->rankTherapists($candidates, $this->patientModel);
+            $match = $matchingService->selectBestMatch($ranked);
+
+            if (!$match) {
+                echo json_encode(['success' => false, 'message' => 'No available therapists match your preferences right now.']);
+                exit();
+            }
+
+            $therapistId = (int)$match->getTherapistId();
+            if ($therapistId <= 0) {
+                echo json_encode(['success' => false, 'message' => 'Matching failed.']);
+                exit();
+            }
+
+            $check = $conn->prepare(
+                "SELECT match_id FROM therapist_matches
+                 WHERE patient_id = ? AND therapist_id = ? AND status = 'Accepted'
+                 LIMIT 1"
+            );
+            $check->execute([$patientId, $therapistId]);
+            if ($check->fetch(PDO::FETCH_ASSOC)) {
+                echo json_encode(['success' => true, 'message' => 'You are already matched with this therapist.']);
+                exit();
+            }
+
+            $inserted = false;
+            $attempts = [
+                [
+                    "INSERT INTO therapist_matches (patient_id, therapist_id, status) VALUES (?, ?, 'Accepted')",
+                    [$patientId, $therapistId]
+                ],
+                [
+                    "INSERT INTO therapist_matches (patient_id, therapist_id, match_score, status) VALUES (?, ?, ?, 'Accepted')",
+                    [$patientId, $therapistId, (float)$match->getMatchScore()]
+                ],
+                [
+                    "INSERT INTO therapist_matches (patient_id, therapist_id, status, created_at) VALUES (?, ?, 'Accepted', NOW())",
+                    [$patientId, $therapistId]
+                ],
+            ];
+
+            foreach ($attempts as [$sql, $params]) {
+                try {
+                    $conn->prepare($sql)->execute($params);
+                    $inserted = true;
+                    break;
+                } catch (Exception $e) {
+                }
+            }
+
+            if (!$inserted) {
+                echo json_encode(['success' => false, 'message' => 'Failed to save match record.']);
+                exit();
+            }
+
+            $conn->prepare(
+                "UPDATE users SET status = 'Matched' WHERE user_id = ? AND role = 'Patient'"
+            )->execute([$patientId]);
+
+            echo json_encode(['success' => true, 'message' => 'Therapist matched successfully.']);
+        } catch (Exception $e) {
+            error_log('[Request Match] ' . $e->getMessage());
+            echo json_encode(['success' => false, 'message' => 'Failed to match therapist.']);
+        }
+        exit();
+    }
+
     private function handleBookAppointment(): void
     {
         header('Content-Type: application/json');
@@ -189,6 +291,62 @@ class PatientDashboardController
         }
 
         echo json_encode($this->apptManager->cancelAppointment($apptId, $patientId));
+        exit();
+    }
+
+    private function handleCheckAvailability(): void
+    {
+        header('Content-Type: application/json');
+        $patientId   = (int)$_SESSION['user_id'];
+        $therapistId = filter_input(INPUT_POST, 'therapist_id', FILTER_VALIDATE_INT);
+        $date        = trim($_POST['appointment_date'] ?? '');
+
+        if (!$therapistId) {
+            echo json_encode(['success' => false, 'message' => 'Invalid therapist ID.']);
+            exit();
+        }
+        if (empty($date)) {
+            echo json_encode(['success' => false, 'message' => 'Please choose a date.']);
+            exit();
+        }
+
+        try {
+            $conn = SingletonDatabase::getInstance()->getConnection();
+
+            $stmt = $conn->prepare(
+                "SELECT COUNT(*) AS cnt
+                 FROM appointments
+                 WHERE therapist_id = ?
+                   AND appointment_date = ?
+                   AND status IN ('Scheduled','Confirmed')"
+            );
+            $stmt->execute([$therapistId, $date]);
+            $therapistBusy = ((int)($stmt->fetch(PDO::FETCH_ASSOC)['cnt'] ?? 0)) > 0;
+
+            $stmt2 = $conn->prepare(
+                "SELECT COUNT(*) AS cnt
+                 FROM appointments
+                 WHERE patient_id = ?
+                   AND appointment_date = ?
+                   AND status IN ('Scheduled','Confirmed')"
+            );
+            $stmt2->execute([$patientId, $date]);
+            $patientBusy = ((int)($stmt2->fetch(PDO::FETCH_ASSOC)['cnt'] ?? 0)) > 0;
+
+            if ($patientBusy) {
+                echo json_encode(['success' => true, 'available' => false, 'message' => 'You already have an appointment at this time.']);
+                exit();
+            }
+            if ($therapistBusy) {
+                echo json_encode(['success' => true, 'available' => false, 'message' => 'Therapist is not available at this time.']);
+                exit();
+            }
+
+            echo json_encode(['success' => true, 'available' => true, 'message' => 'Slot is available.']);
+        } catch (Exception $e) {
+            error_log('[Check Availability] ' . $e->getMessage());
+            echo json_encode(['success' => false, 'message' => 'Failed to check availability.']);
+        }
         exit();
     }
 
@@ -360,6 +518,68 @@ class PatientDashboardController
         exit();
     }
 
+    private function handleSessionCheckIn(): void
+    {
+        header('Content-Type: application/json');
+        $patientId = (int)$_SESSION['user_id'];
+        $sessionId = filter_input(INPUT_POST, 'session_id', FILTER_VALIDATE_INT);
+
+        if (!$sessionId) {
+            echo json_encode(['success' => false, 'message' => 'Invalid session.']);
+            exit();
+        }
+
+        try {
+            $conn = SingletonDatabase::getInstance()->getConnection();
+            $stmt = $conn->prepare(
+                "SELECT a.patient_id, a.appointment_date, s.session_id, s.session_state, s.meeting_link
+                 FROM sessions s
+                 JOIN appointments a ON a.appointment_id = s.appointment_id
+                 WHERE s.session_id = ?
+                 LIMIT 1"
+            );
+            $stmt->execute([$sessionId]);
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if (!$row || (int)$row['patient_id'] !== $patientId) {
+                echo json_encode(['success' => false, 'message' => 'Unauthorized session access.']);
+                exit();
+            }
+
+            $apptTs = strtotime($row['appointment_date'] ?? '');
+            if (!$apptTs) {
+                echo json_encode(['success' => false, 'message' => 'Invalid appointment time.']);
+                exit();
+            }
+
+            $now = time();
+            if ($now < ($apptTs - 300)) {
+                echo json_encode(['success' => false, 'message' => 'You can check in up to 5 minutes before the session.']);
+                exit();
+            }
+
+            require_once __DIR__ . '/SessionController.php';
+            $sessionController = new SessionController();
+            $ok = $sessionController->transitionState($sessionId, 'CheckedIn');
+
+            if (!$ok) {
+                echo json_encode(['success' => false, 'message' => 'Cannot check in for this session right now.']);
+                exit();
+            }
+
+            echo json_encode([
+                'success' => true,
+                'message' => 'Checked in.',
+                'meeting_link' => $row['meeting_link'] ?? null,
+                'session_state' => 'CheckedIn',
+            ]);
+        } catch (Exception $e) {
+            error_log('[Patient Session CheckIn] ' . $e->getMessage());
+            echo json_encode(['success' => false, 'message' => 'Check-in failed.']);
+        }
+        exit();
+    }
+
 
     public function getDashboardData(): array
     {
@@ -458,6 +678,11 @@ class PatientDashboardController
         return $this->resourceManager->getResources((int)$_SESSION['user_id']);
     }
 
+    public function getResourcesByGoalCategories(): array
+    {
+        return $this->resourceManager->getResourcesByGoalCategories((int)$_SESSION['user_id']);
+    }
+
     public function getNotifications(): array
     {
         return $this->notifManager->getNotifications((int)$_SESSION['user_id']);
@@ -543,11 +768,14 @@ class PatientDashboardController
     private function handlePostForum(): void
     {
         header('Content-Type: application/json');
+        if (ob_get_length()) { ob_clean(); }
         $patientId  = (int)$_SESSION['user_id'];
-        $content    = trim($_POST['content']    ?? '');
-        $category   = trim($_POST['category']   ?? 'General support');
-        $pseudonym  = trim($_POST['pseudonym']  ?? '');
-        $isCrisis   = (int)($_POST['is_crisis'] ?? 0);
+        $content      = trim($_POST['content']    ?? '');
+        $category     = trim($_POST['category']   ?? 'General support');
+        $pseudonym    = trim($_POST['pseudonym']  ?? '');
+        $isCrisis     = (int)($_POST['is_crisis'] ?? 0);
+        $isUnallowed  = $this->detectUnallowedWords($content) ? 1 : 0;
+        $isFlagged    = $isCrisis || $isUnallowed;
 
         if (empty($content)) {
             echo json_encode(['success' => false, 'message' => 'Content cannot be empty.']);
@@ -566,15 +794,20 @@ class PatientDashboardController
                 "INSERT INTO community_posts (user_id, author_pseudonym, category, content, is_flagged, created_at)
                  VALUES (?, ?, ?, ?, ?, NOW())"
             );
-            $stmt->execute([$patientId, $pseudonym ?: 'Anonymous', $category, $content, $isCrisis]);
+            $stmt->execute([$patientId, $pseudonym ?: 'Anonymous', $category, $content, $isFlagged]);
             $postId = $conn->lastInsertId();
 
-            // If crisis keywords — auto-flag + insert moderation log
-            if ($isCrisis) {
+            if ($isFlagged) {
+                $note = 'Unallowed language detected';
+                if ($isCrisis && $isUnallowed) {
+                    $note = 'Crisis and unallowed language detected';
+                } elseif ($isCrisis) {
+                    $note = 'Crisis keywords detected';
+                }
                 $conn->prepare(
-                    "INSERT INTO moderation_logs (post_id, action, actioned_by, note, created_at)
-                     VALUES (?, 'auto-flagged', 0, 'Crisis keywords detected', NOW())"
-                )->execute([$postId]);
+                    "INSERT INTO moderation_logs (post_id, moderator_id, action_taken, note, created_at)
+                     VALUES (?, NULL, 'Marked Under Review', ?, NOW())"
+                )->execute([$postId, $note]);
             }
 
             echo json_encode(['success' => true, 'message' => 'Posted.', 'post_id' => $postId]);
@@ -585,9 +818,27 @@ class PatientDashboardController
         exit();
     }
 
+    private function detectUnallowedWords(string $text): bool
+    {
+        $blocked = [
+            'fuck','shit','bitch','asshole','bastard','whore','slut','cunt','dick','pussy',
+            'retard','damn','hell','idiot','stupid','trash','كلب','حمار','ابن كلب','يا كلب',
+            'يا حمار','قحبة','عرص','زق','منيوك'
+        ];
+
+        $normalized = mb_strtolower($text, 'UTF-8');
+        foreach ($blocked as $word) {
+            if ($word !== '' && mb_stripos($normalized, $word, 0, 'UTF-8') !== false) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private function handleReactPost(): void
     {
         header('Content-Type: application/json');
+        if (ob_get_length()) { ob_clean(); }
         $postId    = filter_input(INPUT_POST, 'post_id', FILTER_VALIDATE_INT);
         $reactionType = trim($_POST['reaction_type'] ?? 'heart');
 
@@ -608,6 +859,7 @@ class PatientDashboardController
     private function handleFlagPost(): void
     {
         header('Content-Type: application/json');
+        if (ob_get_length()) { ob_clean(); }
         $postId    = filter_input(INPUT_POST, 'post_id', FILTER_VALIDATE_INT);
         $patientId = (int)$_SESSION['user_id'];
 
@@ -617,8 +869,8 @@ class PatientDashboardController
             $conn = SingletonDatabase::getInstance()->getConnection();
             $conn->prepare("UPDATE community_posts SET is_flagged = 1 WHERE post_id = ?")->execute([$postId]);
             $conn->prepare(
-                "INSERT INTO moderation_logs (post_id, action, actioned_by, note, created_at)
-                 VALUES (?, 'flagged', ?, 'Flagged by patient', NOW())"
+                "INSERT INTO moderation_logs (post_id, moderator_id, action_taken, note, created_at)
+                 VALUES (?, ?, 'Escalated', 'Flagged by patient', NOW())"
             )->execute([$postId, $patientId]);
             echo json_encode(['success' => true, 'message' => 'Reported.']);
         } catch (Exception $e) {
@@ -630,6 +882,7 @@ class PatientDashboardController
     private function handleLoadPosts(): void
     {
         header('Content-Type: application/json');
+        if (ob_get_length()) { ob_clean(); }
         $category = trim($_POST['category'] ?? 'all');
         $offset   = max(0, (int)($_POST['offset'] ?? 0));
         $limit    = 10;

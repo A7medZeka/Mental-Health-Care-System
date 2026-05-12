@@ -26,14 +26,15 @@ function showToast(msg, type = 'success') {
     setTimeout(() => { const t = document.getElementById(id); if (t) t.remove(); }, 4000);
 }
 
-/* ══════════════════════════════════════════════════════════
-   UC-28 / UC-29 / UC-30  — PATIENT FORUM
-   ══════════════════════════════════════════════════════════ */
+
 const CRISIS_KEYWORDS = ['suicide','kill myself','end my life','can\'t go on','want to die',
-                         'no reason to live','hurt myself','harm myself','overdose'];
+                         'no reason to live','hurt myself','harm myself','overdose',
+                         'انتحار','أنتحر','انا انتحر','اقتل نفسي','عايز اموت','عايزة اموت','نفسي اموت','هموت نفسي','انهي حياتي','نهاية حياتي','لا سبب للحياة','اذي نفسي','أذى نفسي','أؤذي نفسي','جرعة زائدة','اودوس'];
+
+const UNALLOWED_WORDS = ['fuck','shit','bitch','asshole','bastard','whore','slut','cunt','dick','pussy','retard','damn','hell','idiot','stupid','trash','كلب','حمار','ابن كلب','يا كلب','يا حمار','قحبة','عرص','زق','منيوك'];
 
 const PSEUDONYM_POOL = [
-    ['SilentBirch','CalmRiver','QuietMoon','WinterFox','SilverPine','NightWillow','MorningDew'],
+    ['SilentBirch','CalmRiver','QuietMoon','الصقر الجارح','SilverPine','كلب الليل','MorningDew'],
     ['4027','3312','8821','7740','9931','0055','1182']
 ];
 
@@ -59,8 +60,24 @@ function randomColor() { return AVATAR_COLORS[Math.floor(Math.random() * AVATAR_
 
 /* UC-29: Keyword scan */
 function scanForCrisis(text) {
-    const lower = text.toLowerCase();
-    return CRISIS_KEYWORDS.some(kw => lower.includes(kw));
+    const normalized = normalizeForScan(text);
+    return CRISIS_KEYWORDS.some(kw => normalized.includes(normalizeForScan(kw)));
+}
+
+function scanForUnallowedWords(text) {
+    const normalized = normalizeForScan(text);
+    return UNALLOWED_WORDS.some(kw => normalized.includes(normalizeForScan(kw)));
+}
+
+function normalizeForScan(s) {
+    return (s || '')
+        .toString()
+        .toLowerCase()
+        .replace(/[\u064B-\u065F\u0670\u06D6-\u06ED]/g, '')
+        .replace(/\u0640/g, '')
+        .replace(/[إأآ]/g, 'ا')
+        .replace(/ى/g, 'ي')
+        .replace(/ة/g, 'ه');
 }
 
 /* UC-30: Emergency resources data */
@@ -164,7 +181,8 @@ async function flagPost(btn, postId) {
     const textarea = document.getElementById('postContent');
     const alertEl  = document.getElementById('keywordAlert');
     textarea?.addEventListener('input', () => {
-        if (alertEl) alertEl.style.display = scanForCrisis(textarea.value) ? 'block' : 'none';
+        const hasIssue = scanForCrisis(textarea.value) || scanForUnallowedWords(textarea.value);
+        if (alertEl) alertEl.style.display = hasIssue ? 'block' : 'none';
     });
 
     // Submit post — saves to DB
@@ -174,8 +192,13 @@ async function flagPost(btn, postId) {
         if (!content) { showToast('Please write something before posting.', 'warning'); return; }
 
         const isCrisis = scanForCrisis(content);
+        const isUnallowed = scanForUnallowedWords(content);
+        const isFlagged = isCrisis || isUnallowed;
+
         if (isCrisis) {
             showToast('⚠️ Crisis keywords detected. Moderators have been alerted.', 'danger');
+        } else if (isUnallowed) {
+            showToast('⚠️ Unallowed language detected. Your post will be flagged for review.', 'danger');
         }
 
         const submitBtn = document.getElementById('btnSubmitPost');
@@ -201,8 +224,27 @@ async function flagPost(btn, postId) {
             form.append('category',  dbCategory);
             form.append('pseudonym', p);
             form.append('is_crisis', isCrisis ? 1 : 0);
+            form.append('is_unallowed', isUnallowed ? 1 : 0);
 
-            const data = await fetch('forum.php', { method:'POST', body:form }).then(r => r.json());
+            const res = await fetch('forum.php', { method:'POST', body:form, credentials:'same-origin' });
+            if (res.redirected) {
+                showToast('Session expired. Please reload and log in again.', 'danger');
+                return;
+            }
+            const raw = await res.text();
+            if (!res.ok) {
+                console.error(raw);
+                showToast('Server error. Please try again.', 'danger');
+                return;
+            }
+            let data;
+            try {
+                data = JSON.parse(raw);
+            } catch (e) {
+                console.error(raw);
+                showToast('Invalid server response. Check PHP errors.', 'danger');
+                return;
+            }
 
             if (!data.success) {
                 showToast('Post failed: ' + (data.message || 'Unknown error'), 'danger');
@@ -213,7 +255,7 @@ async function flagPost(btn, postId) {
             const feed  = document.getElementById('postsFeed');
             const postId = data.post_id;
             const card  = document.createElement('div');
-            card.className = 'forum-post-card p-4' + (isCrisis ? ' crisis-post' : '');
+            card.className = 'forum-post-card p-4' + (isCrisis ? ' crisis-post' : (isFlagged ? ' flagged-post' : ''));
             card.dataset.category = dbCategory;
             card.dataset.postId   = postId;
             card.innerHTML = `
@@ -224,7 +266,7 @@ async function flagPost(btn, postId) {
                             <strong class="text-primary-custom">${p}</strong>
                             <span class="badge bg-light text-primary-custom border" style="font-size:.75rem;">${categoryLabels[dbCategory] || dbCategory}</span>
                             <small class="text-secondary-custom ms-auto">Just now</small>
-                            ${isCrisis ? '<span class="badge bg-danger ms-1"><i class="bi bi-exclamation-triangle-fill me-1"></i>Flagged</span>' : ''}
+                            ${isFlagged ? '<span class="badge bg-danger ms-1"><i class="bi bi-exclamation-triangle-fill me-1"></i>Flagged</span>' : ''}
                         </div>
                         <p class="mb-3">${content.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</p>
                         <div class="d-flex align-items-center gap-2 flex-wrap border-top pt-2">
@@ -237,8 +279,12 @@ async function flagPost(btn, postId) {
             feed.prepend(card);
             textarea.value = '';
             if (alertEl) alertEl.style.display = 'none';
-            showToast(isCrisis ? 'Posted — moderators notified due to sensitive content.' : 'Posted anonymously!', isCrisis ? 'warning' : 'success');
+            showToast(isFlagged
+                ? (isCrisis ? 'Posted — moderators notified due to sensitive content.' : 'Posted — your post contains unallowed language and has been flagged.')
+                : 'Posted anonymously!',
+                isFlagged ? 'warning' : 'success');
         } catch(err) {
+            console.error(err);
             showToast('Network error — please try again.', 'danger');
         } finally {
             submitBtn.disabled = false;
