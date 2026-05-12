@@ -26,11 +26,40 @@ $first_name = $therapistObj->getFirstName();
 $last_name  = $therapistObj->getLastName();
 $role       = $therapistObj->getRole();
 $email      = $therapistObj->getEmail();
-$gender     = $_SESSION['gender'] ?? 'N/A';
 
 // 3. جلب الإحصائيات (بعد ما صلحنا الـ JOIN والـ session_state)
-$stats = $therapistRepo->getTherapistStats($user_id);
-$age = $_SESSION['age'] ?? 'N/A'; // السن من السيشن أو من كائن الثيرابيست
+// --- بداية حل مشكلة العمر (Age) والنوع (Gender) ---
+$db = SingletonDatabase::getInstance()->getConnection();
+$stmt = $db->prepare("SELECT date_of_birth, gender FROM users WHERE user_id = ?");
+$stmt->execute([$user_id]);
+$userData = $stmt->fetch();
+
+$age = 'N/A';
+$gender = 'N/A'; // القيمة الافتراضية
+if ($userData) {
+    if (!empty($userData['date_of_birth'])) {
+        $dob = new DateTime($userData['date_of_birth']);
+        $now = new DateTime();
+        $age = $now->diff($dob)->y;
+    }
+    if (!empty($userData['gender'])) {
+        $gender = $userData['gender'];
+    }
+}
+// --- نهاية حل مشكلة العمر والنوع ---
+// --- بداية حل مشكلة العمر (Age) المحدث ---
+$db = SingletonDatabase::getInstance()->getConnection();
+$stmt = $db->prepare("SELECT date_of_birth FROM users WHERE user_id = ?");
+$stmt->execute([$user_id]);
+$userData = $stmt->fetch();
+
+$age = 'N/A';
+if ($userData && !empty($userData['date_of_birth'])) {
+    $dob = new DateTime($userData['date_of_birth']);
+    $now = new DateTime();
+    $age = $now->diff($dob)->y; // حساب السن بناءً على تاريخ الميلاد والوقت الحالي
+}
+// --- نهاية حل مشكلة العمر ---
 
 // 4. UC-14: جلب جدول المواعيد الحقيقي
 $todaySchedule = $therapistRepo->getTherapistSchedule($user_id);
@@ -113,21 +142,45 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['welfareActionType']))
                 </div>
 
                 <!-- Notifications & Reminders (UC-14) -->
-                <div class="row mb-4">
-                    <div class="col-12">
-                        <div class="card card-custom border-warning border-start border-4">
-                            <div class="card-body py-3 d-flex align-items-center" id="reminderNotification">
-                                <i class="bi bi-bell-fill text-warning fs-3 me-3"></i>
-                                <div>
-                                    <h6 class="fw-bold mb-1">System Reminder: Upcoming Session</h6>
-                                    <p class="mb-0 text-secondary-custom small">You have a scheduled session with <strong>Jane Doe</strong> in 15 minutes.</p>
+                <?php
+                // --- بداية حل مشكلة التنبيه الديناميكي ---
+                $nextSession = null;
+                $timeDiff = 0;
+
+                // البحث عن أقرب جلسة قادمة في جدول اليوم
+                foreach ($todaySchedule as $session) {
+                    if ($session['session_state'] === 'Scheduled') {
+                        $sessionTime = strtotime($session['appointment_date']);
+                        $nowTime = time();
+
+                        // إذا كانت الجلسة لم تبدأ بعد
+                        if ($sessionTime > $nowTime) {
+                            $nextSession = $session;
+                            $timeDiff = round(($sessionTime - $nowTime) / 60); // حساب الفرق بالدقائق
+                            break; // نكتفي بأول جلسة قادمة
+                        }
+                    }
+                }
+
+                // إظهار التنبيه فقط لو الجلسة خلال 60 دقيقة أو أقل
+                if ($nextSession && $timeDiff <= 60):
+                    $patientName = htmlspecialchars($nextSession['first_name'] . ' ' . $nextSession['last_name']);
+                    ?>
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <div class="card card-custom border-warning border-start border-4">
+                                <div class="card-body py-3 d-flex align-items-center" id="reminderNotification">
+                                    <i class="bi bi-bell-fill text-warning fs-3 me-3"></i>
+                                    <div>
+                                        <h6 class="fw-bold mb-1">System Reminder: Upcoming Session</h6>
+                                        <p class="mb-0 text-secondary-custom small">You have a scheduled session with <strong><?php echo $patientName; ?></strong> in <?php echo $timeDiff; ?> minutes.</p>
+                                    </div>
+                                    <button class="btn btn-sm btn-outline-secondary ms-auto" onclick="this.closest('.card').remove();">Dismiss</button>
                                 </div>
-                                <button class="btn btn-sm btn-outline-secondary ms-auto" onclick="this.closest('.card').remove();">Dismiss</button>
                             </div>
                         </div>
                     </div>
-                </div>
-
+                <?php endif; ?>
                 <!-- Action Required: High-Risk No-Show (UC-17) -->
                 <?php
                 $hasNoShowIncident = $therapistRepo->checkNoShow($user_id);
