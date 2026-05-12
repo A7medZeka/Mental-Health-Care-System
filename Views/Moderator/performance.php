@@ -3,26 +3,16 @@ session_start();
 require_once __DIR__ . '/../../Core/Validation.php';
 require_once __DIR__ . '/../../Core/SingletonDatabase.php';
 
-// 1. Protect the page
-$method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
-if (empty($_SESSION['user_id'])) {
+// 1. Page Protection
+if (empty($_SESSION['user_id']) || $_SESSION['role'] !== 'Moderator') {
     header('Location: ../Auth/login.php');
-    exit();
-}
-if ($_SESSION['role'] !== 'Moderator') {
-    $map = [
-            'Admin'     => '../Admin/dashboard.php',
-            'Patient'   => '../Patient/dashboard.php',
-            'Therapist' => '../Therapist/dashboard.php',
-    ];
-    header('Location: ' . ($map[$_SESSION['role']] ?? '../Auth/login.php'));
     exit();
 }
 
 $modName = $_SESSION['first_name'] ?? 'Moderator';
 
 // =========================================================================
-// 2. Performance Service (100% REAL DATA ONLY - NO RANDOMIZATION)
+// 2. Performance Service (100% REAL DATA - FULLY LOGICAL)
 // =========================================================================
 class PerformanceService {
     private $db;
@@ -32,12 +22,12 @@ class PerformanceService {
     }
 
     public function getDashboardData(int $days): array {
-        // Fetch all active therapists
+        // Fetch all active therapists including License Expiry Date
         $stmt = $this->db->prepare("
-            SELECT u.user_id, u.first_name, u.last_name, t.specialization 
-            FROM users u 
-            LEFT JOIN therapists t ON u.user_id = t.therapist_id 
-            WHERE u.role = 'Therapist' 
+            SELECT u.user_id, u.first_name, u.last_name, t.specialization, t.license_expiry_date
+            FROM users u
+            LEFT JOIN therapists t ON u.user_id = t.therapist_id
+            WHERE u.role = 'Therapist'
             AND u.status IN ('Active', 'Registered', 'Screened', 'Matched')
         ");
         $stmt->execute();
@@ -45,110 +35,93 @@ class PerformanceService {
 
         $kpis = ['avg_rating' => 0.0, 'total_reviews' => 0, 'sessions_completed' => 0, 'no_show_rate' => 0.0];
 
-        // Global Sessions & Appointments
+        // Global KPI Stats for the period
+        $revStmt = $this->db->prepare("SELECT AVG(rating) as avg_r, COUNT(*) as cnt FROM therapist_reviews WHERE created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)");
+        $revStmt->execute([$days]);
+        $revData = $revStmt->fetch(PDO::FETCH_ASSOC);
+        $kpis['avg_rating'] = $revData['cnt'] > 0 ? round((float)$revData['avg_r'], 1) : 0.0;
+        $kpis['total_reviews'] = (int)$revData['cnt'];
+
         $sessStmt = $this->db->prepare("SELECT COUNT(*) FROM appointments WHERE status = 'Completed' AND appointment_date >= DATE_SUB(NOW(), INTERVAL ? DAY)");
         $sessStmt->execute([$days]);
         $kpis['sessions_completed'] = (int)$sessStmt->fetchColumn();
 
+        // Global No-Show Rate Calculation
         $totApptStmt = $this->db->prepare("SELECT COUNT(*) FROM appointments WHERE appointment_date >= DATE_SUB(NOW(), INTERVAL ? DAY)");
         $totApptStmt->execute([$days]);
-        $totAppts = (int)$totApptStmt->fetchColumn();
+        $totalApps = (int)$totApptStmt->fetchColumn();
 
-        $nsStmt = $this->db->prepare("SELECT COUNT(*) FROM appointments WHERE status = 'No-Show' AND appointment_date >= DATE_SUB(NOW(), INTERVAL ? DAY)");
-        $nsStmt->execute([$days]);
-        $nsAppts = (int)$nsStmt->fetchColumn();
-        $kpis['no_show_rate'] = $totAppts > 0 ? round(($nsAppts / $totAppts) * 100, 1) : 0.0;
-
-        // Global Reviews
-        $revStmt = $this->db->prepare("SELECT AVG(rating) as avg_r, COUNT(*) as cnt FROM therapist_reviews WHERE created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)");
-        $revStmt->execute([$days]);
-        $revData = $revStmt->fetch(PDO::FETCH_ASSOC);
-
-        $kpis['avg_rating'] = $revData['cnt'] > 0 ? round((float)$revData['avg_r'], 1) : 0.0;
-        $kpis['total_reviews'] = (int)$revData['cnt'];
+        $nsApptStmt = $this->db->prepare("SELECT COUNT(*) FROM appointments WHERE status = 'No-Show' AND appointment_date >= DATE_SUB(NOW(), INTERVAL ? DAY)");
+        $nsApptStmt->execute([$days]);
+        $nsApps = (int)$nsApptStmt->fetchColumn();
+        $kpis['no_show_rate'] = $totalApps > 0 ? round(($nsApps / $totalApps) * 100, 1) : 0.0;
 
         $colors = ['#2F8F7E', '#48B6A2', '#F4B41A', '#8F5E2F', '#6c757d'];
 
         foreach ($therapists as $index => &$t) {
-            $tid = $t['user_id'];
+            $tid = (int)$t['user_id'];
             $t['initials'] = strtoupper(substr($t['first_name'], 0, 1) . substr($t['last_name'], 0, 1));
             $t['color'] = $colors[$index % 5];
 
-            // Real Rating & Reviews
+            // 1. Real Rating and Review Count
             $trStmt = $this->db->prepare("SELECT AVG(rating) as r_avg, COUNT(*) as r_count FROM therapist_reviews WHERE therapist_id = ? AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)");
             $trStmt->execute([$tid, $days]);
             $trData = $trStmt->fetch(PDO::FETCH_ASSOC);
             $t['rating'] = round((float)($trData['r_avg'] ?? 0), 1);
             $t['reviews_count'] = (int)($trData['r_count'] ?? 0);
 
-            // Real Sessions & Patients
-            $tSessStmt = $this->db->prepare("SELECT COUNT(*) FROM appointments WHERE therapist_id = ? AND status = 'Completed' AND appointment_date >= DATE_SUB(NOW(), INTERVAL ? DAY)");
-            $tSessStmt->execute([$tid, $days]);
-            $tSess = (int)$tSessStmt->fetchColumn();
+            // 2. Real Completed Sessions
+            $tsStmt = $this->db->prepare("SELECT COUNT(*) FROM appointments WHERE therapist_id = ? AND status = 'Completed' AND appointment_date >= DATE_SUB(NOW(), INTERVAL ? DAY)");
+            $tsStmt->execute([$tid, $days]);
+            $tSess = (int)$tsStmt->fetchColumn();
 
-            $tPatStmt = $this->db->prepare("SELECT COUNT(DISTINCT patient_id) FROM appointments WHERE therapist_id = ? AND appointment_date >= DATE_SUB(NOW(), INTERVAL ? DAY)");
-            $tPatStmt->execute([$tid, $days]);
-            $tPat = (int)$tPatStmt->fetchColumn();
+            // 3. REAL Unique Patient Count
+            $tpStmt = $this->db->prepare("SELECT COUNT(DISTINCT patient_id) FROM appointments WHERE therapist_id = ? AND appointment_date >= DATE_SUB(NOW(), INTERVAL ? DAY)");
+            $tpStmt->execute([$tid, $days]);
+            $tPat = (int)$tpStmt->fetchColumn();
 
-            // Real No-Show Rate
-            $tTotApptStmt = $this->db->prepare("SELECT COUNT(*) FROM appointments WHERE therapist_id = ? AND appointment_date >= DATE_SUB(NOW(), INTERVAL ? DAY)");
-            $tTotApptStmt->execute([$tid, $days]);
-            $tTotAppts = (int)$tTotApptStmt->fetchColumn();
+            // 4. REAL No-Show Rate for this therapist
+            $ttStmt = $this->db->prepare("SELECT COUNT(*) FROM appointments WHERE therapist_id = ? AND appointment_date >= DATE_SUB(NOW(), INTERVAL ? DAY)");
+            $ttStmt->execute([$tid, $days]);
+            $therapistTotal = (int)$ttStmt->fetchColumn();
 
-            $tNsStmt = $this->db->prepare("SELECT COUNT(*) FROM appointments WHERE therapist_id = ? AND status = 'No-Show' AND appointment_date >= DATE_SUB(NOW(), INTERVAL ? DAY)");
-            $tNsStmt->execute([$tid, $days]);
-            $tNs = (int)$tNsStmt->fetchColumn();
-            $tNoShowRate = $tTotAppts > 0 ? round(($tNs / $tTotAppts) * 100, 1) : 0.0;
+            $tnStmt = $this->db->prepare("SELECT COUNT(*) FROM appointments WHERE therapist_id = ? AND status = 'No-Show' AND appointment_date >= DATE_SUB(NOW(), INTERVAL ? DAY)");
+            $tnStmt->execute([$tid, $days]);
+            $therapistNS = (int)$tnStmt->fetchColumn();
+            $tNoShowRate = $therapistTotal > 0 ? round(($therapistNS / $therapistTotal) * 100, 1) : 0.0;
 
-            // Calculate Real Rating Breakdown Percentages
-            $breakdown = ['star5' => 0, 'star4' => 0, 'star3' => 0, 'star2' => 0, 'star1' => 0];
-            if ($t['reviews_count'] > 0) {
-                $bdStmt = $this->db->prepare("
-                    SELECT rating, COUNT(*) as cnt 
-                    FROM therapist_reviews 
-                    WHERE therapist_id = ? AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY) 
-                    GROUP BY rating
-                ");
-                $bdStmt->execute([$tid, $days]);
-                $bdRows = $bdStmt->fetchAll(PDO::FETCH_ASSOC);
-
-                foreach ($bdRows as $row) {
-                    $star = round((float)$row['rating']);
-                    if ($star >= 1 && $star <= 5) {
-                        $breakdown['star' . $star] = round(($row['cnt'] / $t['reviews_count']) * 100);
-                    }
-                }
-            }
-
-            // Fetch Real Recent Feedback Comments
-            $fbStmt = $this->db->prepare("
-                SELECT rating as stars, created_at, comment as text 
-                FROM therapist_reviews 
-                WHERE therapist_id = ? 
-                  AND comment IS NOT NULL 
-                  AND TRIM(comment) != '' 
-                  AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
-                ORDER BY created_at DESC 
-                LIMIT 5
-            ");
+            // 5. Feedback Comments (Matching 'comment' column in SQL)
+            $fbStmt = $this->db->prepare("SELECT rating as stars, created_at, comment as text FROM therapist_reviews WHERE therapist_id = ? AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY) ORDER BY created_at DESC LIMIT 5");
             $fbStmt->execute([$tid, $days]);
-            $feedbackRows = $fbStmt->fetchAll(PDO::FETCH_ASSOC);
-
             $feedback = [];
-            foreach ($feedbackRows as $fb) {
+            while ($fb = $fbStmt->fetch(PDO::FETCH_ASSOC)) {
                 $feedback[] = [
-                        'stars' => round((float)$fb['stars']),
+                        'stars' => (int)$fb['stars'],
                         'time'  => date('M j, Y', strtotime($fb['created_at'])),
                         'text'  => htmlspecialchars($fb['text'], ENT_QUOTES, 'UTF-8')
                 ];
             }
 
+            // 6. Star Breakdown percentages
+            $breakdown = ['star5' => 0, 'star4' => 0, 'star3' => 0, 'star2' => 0, 'star1' => 0];
+            if ($t['reviews_count'] > 0) {
+                $bdStmt = $this->db->prepare("SELECT rating, COUNT(*) as cnt FROM therapist_reviews WHERE therapist_id = ? AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY) GROUP BY rating");
+                $bdStmt->execute([$tid, $days]);
+                while ($row = $bdStmt->fetch(PDO::FETCH_ASSOC)) {
+                    $starKey = 'star' . round($row['rating']);
+                    if (isset($breakdown[$starKey])) {
+                        $breakdown[$starKey] = round(($row['cnt'] / $t['reviews_count']) * 100);
+                    }
+                }
+            }
+
             $t['details'] = [
-                    'sessions'  => $tSess,
-                    'patients'  => $tPat,
-                    'no_show'   => $tNoShowRate,
-                    'breakdown' => $breakdown,
-                    'feedback'  => $feedback
+                    'sessions'       => $tSess,
+                    'patients'       => $tPat,
+                    'no_show'        => $tNoShowRate,
+                    'breakdown'      => $breakdown,
+                    'feedback'       => $feedback,
+                    'license_expiry' => $t['license_expiry_date'] ?? 'Not Set'
             ];
         }
 
@@ -157,6 +130,7 @@ class PerformanceService {
     }
 }
 
+// 3. Execution
 $perfService = new PerformanceService();
 $period = isset($_GET['period']) ? (int)$_GET['period'] : 30;
 $data = $perfService->getDashboardData($period);
@@ -167,10 +141,9 @@ function renderStars($rating) {
     $html = '';
     $fullStars = floor($rating);
     $halfStar = ($rating - $fullStars) >= 0.5 ? 1 : 0;
-    $emptyStars = 5 - $fullStars - $halfStar;
     for ($i=0; $i<$fullStars; $i++) $html .= '<i class="bi bi-star-fill star-filled"></i>';
     if ($halfStar) $html .= '<i class="bi bi-star-half star-filled"></i>';
-    for ($i=0; $i<$emptyStars; $i++) $html .= '<i class="bi bi-star star-empty"></i>';
+    for ($i=0; $i<(5 - $fullStars - $halfStar); $i++) $html .= '<i class="bi bi-star star-empty"></i>';
     return $html;
 }
 ?>
@@ -345,11 +318,13 @@ function renderStars($rating) {
 
                 <div class="col-lg-7">
                     <div class="card card-custom h-100" id="detailPanel">
-                        <div class="card-header bg-white border-0 pt-4 pb-0 d-flex align-items-center gap-3">
+                        <div class="card-header bg-white border-0 pt-4 pb-0 d-flex align-items-start gap-3">
                             <div class="therapist-avatar" id="detailAvatar" style="background:#2F8F7E; width:52px; height:52px; font-size:1.1rem;">--</div>
-                            <div>
+                            <div class="flex-grow-1">
                                 <h5 class="fw-bold text-primary-custom mb-0" id="detailName">Select a Therapist</h5>
                                 <small class="text-secondary-custom" id="detailSpec">Specialisation: --</small>
+                                <br>
+                                <span class="badge bg-danger mt-1" style="font-size: 0.75rem;" id="detailLicense">License Expires: --</span>
                             </div>
                         </div>
                         <div class="card-body">
@@ -377,17 +352,6 @@ function renderStars($rating) {
                                 </div>
                             </div>
 
-                            <h6 class="fw-bold text-primary-custom mb-2">Rating Trend <small class="text-secondary-custom fw-normal">(last 7 weeks)</small></h6>
-                            <div class="sparkline mb-4">
-                                <div class="spark-bar" style="height:60%;"></div>
-                                <div class="spark-bar" style="height:65%;"></div>
-                                <div class="spark-bar" style="height:72%;"></div>
-                                <div class="spark-bar" style="height:78%;"></div>
-                                <div class="spark-bar" style="height:80%;"></div>
-                                <div class="spark-bar" style="height:90%;"></div>
-                                <div class="spark-bar" style="height:98%;"></div>
-                            </div>
-
                             <h6 class="fw-bold text-primary-custom mb-2">Recent Patient Feedback</h6>
                             <div id="detailFeedback"></div>
                         </div>
@@ -409,7 +373,7 @@ function renderStars($rating) {
         let empty = 5 - full - half;
         for(let i=0; i<full; i++) html += '<i class="bi bi-star-fill star-filled"></i>';
         if(half) html += '<i class="bi bi-star-half star-filled"></i>';
-        for(let i=0; i<empty; i++) html += '<i class="bi bi-star-empty star-empty"></i>';
+        for(let i=0; i<empty; i++) html += '<i class="bi bi-star star-empty"></i>';
         return html;
     }
 
@@ -424,6 +388,7 @@ function renderStars($rating) {
         document.getElementById('detailAvatar').style.background = data.color;
         document.getElementById('detailName').innerText = 'Dr. ' + data.first_name + ' ' + data.last_name;
         document.getElementById('detailSpec').innerText = 'Specialisation: ' + (data.specialization || 'General');
+        document.getElementById('detailLicense').innerText = 'License Expires: ' + (data.details.license_expiry || 'Not Set');
 
         document.getElementById('dKpiSessions').innerText = data.details.sessions;
         document.getElementById('dKpiPatients').innerText = data.details.patients;
@@ -431,11 +396,11 @@ function renderStars($rating) {
 
         const bd = data.details.breakdown;
         let breakdownHTML = `
-            <div class="chart-row"><span class="chart-label"><i class="bi bi-star-fill star-filled me-1"></i>5 Stars</span><div class="chart-track"><div class="chart-fill" style="width:${bd.star5}%"></div></div><span class="chart-value">${bd.star5}%</span></div>
-            <div class="chart-row"><span class="chart-label"><i class="bi bi-star-fill star-filled me-1"></i>4 Stars</span><div class="chart-track"><div class="chart-fill" style="width:${bd.star4}%"></div></div><span class="chart-value">${bd.star4}%</span></div>
-            <div class="chart-row"><span class="chart-label"><i class="bi bi-star-fill star-filled me-1"></i>3 Stars</span><div class="chart-track"><div class="chart-fill warn" style="width:${bd.star3}%"></div></div><span class="chart-value" style="color:#F4B41A;">${bd.star3}%</span></div>
-            <div class="chart-row"><span class="chart-label"><i class="bi bi-star-fill star-filled me-1"></i>2 Stars</span><div class="chart-track"><div class="chart-fill danger" style="width:${bd.star2}%"></div></div><span class="chart-value" style="color:#dc3545;">${bd.star2}%</span></div>
-            <div class="chart-row"><span class="chart-label"><i class="bi bi-star-fill star-filled me-1"></i>1 Star</span><div class="chart-track"><div class="chart-fill danger" style="width:${bd.star1}%"></div></div><span class="chart-value" style="color:#dc3545;">${bd.star1}%</span></div>
+            <div class="chart-row"><span class="chart-label">5 Stars</span><div class="chart-track"><div class="chart-fill" style="width:${bd.star5}%"></div></div><span class="chart-value">${bd.star5}%</span></div>
+            <div class="chart-row"><span class="chart-label">4 Stars</span><div class="chart-track"><div class="chart-fill" style="width:${bd.star4}%"></div></div><span class="chart-value">${bd.star4}%</span></div>
+            <div class="chart-row"><span class="chart-label">3 Stars</span><div class="chart-track"><div class="chart-fill warn" style="width:${bd.star3}%"></div></div><span class="chart-value" style="color:#F4B41A;">${bd.star3}%</span></div>
+            <div class="chart-row"><span class="chart-label">2 Stars</span><div class="chart-track"><div class="chart-fill danger" style="width:${bd.star2}%"></div></div><span class="chart-value" style="color:#dc3545;">${bd.star2}%</span></div>
+            <div class="chart-row"><span class="chart-label">1 Star</span><div class="chart-track"><div class="chart-fill danger" style="width:${bd.star1}%"></div></div><span class="chart-value" style="color:#dc3545;">${bd.star1}%</span></div>
         `;
         document.getElementById('detailBreakdown').innerHTML = breakdownHTML;
 
