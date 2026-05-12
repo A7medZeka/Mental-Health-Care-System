@@ -560,7 +560,8 @@ class PatientDashboardController
 
             require_once __DIR__ . '/SessionController.php';
             $sessionController = new SessionController();
-            $ok = $sessionController->transitionState($sessionId, 'CheckedIn');
+            $sessionController->startSession($sessionId);
+            $ok = true;
 
             if (!$ok) {
                 echo json_encode(['success' => false, 'message' => 'Cannot check in for this session right now.']);

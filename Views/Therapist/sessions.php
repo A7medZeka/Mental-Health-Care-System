@@ -74,7 +74,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['noteContent']) && $cu
 
 if (isset($_GET['action']) && $currentSessionId) {
     if ($_GET['action'] === 'checkin') {
-        $sessionCtrl->transitionState($currentSessionId, 'Live');
+        $sessionCtrl->checkInSession($currentSessionId);
+        header("Location: sessions.php?id=$currentSessionId");
+        exit();
+    } elseif ($_GET['action'] === 'admit') {
+        $sessionCtrl->admitPatient($currentSessionId, $currentSession['patient_id']);
         header("Location: sessions.php?id=$currentSessionId");
         exit();
     } elseif ($_GET['action'] === 'end') {
@@ -164,7 +168,7 @@ $noteHistory = $currentSessionId ? $noteCtrl->getVersionHistory($currentSessionI
                                                             <?php echo date('M d, h:i A', strtotime($session['appointment_date'])); ?>
                                                         </small>
                                                     </div>
-                                                    <span class="badge <?php echo $session['session_state'] === 'Scheduled' ? 'bg-secondary' : ($session['session_state'] === 'Live' ? 'bg-danger' : 'bg-success'); ?>">
+                                                    <span class="badge <?php echo $session['session_state'] === 'Scheduled' ? 'bg-secondary' : ($session['session_state'] === 'CheckedIn' ? 'bg-warning' : ($session['session_state'] === 'Live' ? 'bg-danger' : 'bg-success')); ?>">
                                                         <?php echo $session['session_state']; ?>
                                                     </span>
                                                 </div>
@@ -187,7 +191,7 @@ $noteHistory = $currentSessionId ? $noteCtrl->getVersionHistory($currentSessionI
                                     <h5 class="fw-bold mb-1">Session #<?php echo $currentSessionId; ?></h5>
                                     <p class="text-muted small mb-0">Patient: <strong class="text-dark"><?php echo htmlspecialchars($currentSession['first_name'] . ' ' . $currentSession['last_name']); ?></strong></p>
                                     <p class="text-muted small mb-0">Status:
-                                        <span class="badge <?php echo $currentSession['session_state'] === 'Scheduled' ? 'bg-secondary' : ($currentSession['session_state'] === 'Live' ? 'bg-danger' : 'bg-success'); ?>">
+                                        <span class="badge <?php echo $currentSession['session_state'] === 'Scheduled' ? 'bg-secondary' : ($currentSession['session_state'] === 'CheckedIn' ? 'bg-warning' : ($currentSession['session_state'] === 'Live' ? 'bg-danger' : 'bg-success')); ?>">
                                                 <?php echo $currentSession['session_state']; ?>
                                             </span>
                                     </p>
@@ -195,6 +199,8 @@ $noteHistory = $currentSessionId ? $noteCtrl->getVersionHistory($currentSessionI
                                 <div class="d-flex gap-2">
                                     <?php if ($currentSession['session_state'] === 'Scheduled'): ?>
                                         <button class="btn btn-success" onclick="Session.checkIn(<?php echo $currentSessionId; ?>)"><i class="bi bi-person-check me-2"></i> Check-in</button>
+                                    <?php elseif ($currentSession['session_state'] === 'CheckedIn'): ?>
+                                        <button class="btn btn-primary" onclick="Session.admit(<?php echo $currentSessionId; ?>)"><i class="bi bi-door-open me-2"></i> Admit Patient</button>
                                     <?php elseif ($currentSession['session_state'] === 'Live'): ?>
                                         <button class="btn btn-danger" onclick="Session.end(<?php echo $currentSessionId; ?>)"><i class="bi bi-stop-circle me-2"></i> End Session</button>
                                     <?php endif; ?>
@@ -265,6 +271,11 @@ $noteHistory = $currentSessionId ? $noteCtrl->getVersionHistory($currentSessionI
     const Session = {
         checkIn: function(sessionId) {
             window.location.href = `sessions.php?id=${sessionId}&action=checkin`;
+        },
+        admit: function(sessionId) {
+            if(confirm('Admit patient to start live session?')) {
+                window.location.href = `sessions.php?id=${sessionId}&action=admit`;
+            }
         },
         end: function(sessionId) {
             if(confirm('Are you sure you want to end this session?')) {

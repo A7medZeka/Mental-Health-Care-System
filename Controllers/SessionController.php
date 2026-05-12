@@ -72,6 +72,14 @@ class SessionController {
     }
 
     /**
+     * +checkInSession(sessionId) : void
+     * UC 13 SD: Therapist checks in patient — Scheduled → CheckedIn.
+     */
+    public function checkInSession(int $sessionId): void {
+        $this->transitionState($sessionId, 'CheckedIn');
+    }
+
+    /**
      * +endSession(sessionId) : void
      * UC 13 SD: Live → Completed, then trigger billing.
      */
