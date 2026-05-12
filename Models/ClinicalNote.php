@@ -34,6 +34,7 @@ class ClinicalNote implements IEncryptable {
     }
     public function getNoteId(): int { return $this->noteId; }
     public function getSessionId(): int { return $this->sessionId; }
+    public function getTherapistId(): int { return $this->therapistId; }
     public function getEncryptedContent(): string { return $this->encryptedContent; }
     public function getVersionNo(): int { return $this->versionNo; }
     public function getCreatedAt(): string { return $this->createdAt; }

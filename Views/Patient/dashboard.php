@@ -59,6 +59,7 @@ $intakeStatus        = $controller->getIntakeStatus();
           <li class="nav-item"><a class="nav-link active" data-section="section-dashboard" href="#" onclick="showSection('section-dashboard'); return false;"><i class="bi bi-speedometer2 me-2"></i>Dashboard</a></li>
           <li class="nav-item"><a class="nav-link" data-section="section-onboarding" href="#" onclick="showSection('section-onboarding'); return false;"><i class="bi bi-clipboard-check me-2"></i>Onboarding Checklist</a></li>
           <li class="nav-item"><a class="nav-link" data-section="section-therapist" href="#" onclick="showSection('section-therapist'); return false;"><i class="bi bi-person-check me-2"></i>My Therapist</a></li>
+          <li class="nav-item"><a class="nav-link" data-section="section-reviews" href="#" onclick="showSection('section-reviews'); return false;"><i class="bi bi-star me-2"></i>Reviews & Ratings</a></li>
           <li class="nav-item"><a class="nav-link" data-section="section-appointments" href="#" onclick="showSection('section-appointments'); return false;"><i class="bi bi-calendar-event me-2"></i>Appointments</a></li>
           <li class="nav-item"><a class="nav-link" data-section="section-sessions" href="#" onclick="showSection('section-sessions'); return false;"><i class="bi bi-camera-video me-2"></i>Sessions</a></li>
           <li class="nav-item"><a class="nav-link" data-section="section-mood" href="#" onclick="showSection('section-mood'); return false;"><i class="bi bi-heart-pulse me-2"></i>Mood Tracker</a></li>
@@ -326,6 +327,75 @@ $intakeStatus        = $controller->getIntakeStatus();
                     </select></div>
                   <button type="button" class="btn btn-primary-custom w-100" onclick="savePreferences()">Save Preferences</button>
                   <p class="text-secondary-custom small mt-3 mb-0">These preferences are used when matching or re-matching you with a therapist.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- REVIEWS -->
+        <div id="section-reviews" style="display:none;">
+          <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2 class="fw-bold text-primary-custom mb-0">Reviews & Ratings</h2>
+            <span class="text-secondary-custom"><i class="bi bi-person-circle me-1"></i> <?= htmlspecialchars($first_name . ' ' . $last_name) ?></span>
+          </div>
+          <div class="row g-4">
+            <div class="col-lg-5">
+              <div class="card card-custom">
+                <div class="card-header bg-white border-0 pt-4 pb-0"><h5 class="fw-bold text-primary-custom mb-0">Write a Review</h5></div>
+                <div class="card-body">
+                  <?php if ($myTherapist): ?>
+                    <div class="mb-3">
+                      <label class="form-label">Therapist</label>
+                      <input type="text" class="form-control" value="Dr. <?= htmlspecialchars($myTherapist['first_name'] . ' ' . $myTherapist['last_name']) ?>" readonly>
+                      <input type="hidden" id="reviewTherapistId" value="<?= $myTherapist['user_id'] ?>">
+                    </div>
+                    <div class="mb-3">
+                      <label class="form-label">Rating</label>
+                      <div class="d-flex gap-1" id="ratingStars">
+                        <?php for ($i = 1; $i <= 5; $i++): ?>
+                          <button type="button" class="btn btn-outline-warning rating-star" data-rating="<?= $i ?>" onclick="setRating(<?= $i ?>)">
+                            <i class="bi bi-star-fill"></i>
+                          </button>
+                        <?php endfor; ?>
+                      </div>
+                      <small class="text-muted">Click to rate from 1 to 5 stars</small>
+                    </div>
+                    <div class="mb-3">
+                      <label class="form-label">Your Review</label>
+                      <textarea id="reviewText" class="form-control" rows="4" placeholder="Share your experience with this therapist..." maxlength="1000"></textarea>
+                      <small class="text-muted">Maximum 1000 characters</small>
+                    </div>
+                    <button type="button" class="btn btn-primary-custom w-100" onclick="submitReview()">
+                      <i class="bi bi-star me-1"></i> Submit Review
+                    </button>
+                    <div id="reviewMessage" class="mt-3"></div>
+                  <?php else: ?>
+                    <div class="text-center py-4">
+                      <i class="bi bi-person-x text-muted" style="font-size:3rem;"></i>
+                      <p class="text-muted mt-3">You need to be matched with a therapist to write a review.</p>
+                      <button type="button" class="btn btn-primary-custom" onclick="showSection('section-therapist')">Find a Therapist</button>
+                    </div>
+                  <?php endif; ?>
+                </div>
+              </div>
+            </div>
+            <div class="col-lg-7">
+              <div class="card card-custom">
+                <div class="card-header bg-white border-0 pt-4 pb-0 d-flex justify-content-between align-items-center">
+                  <h5 class="fw-bold text-primary-custom mb-0">My Reviews</h5>
+                  <button type="button" class="btn btn-sm btn-outline-secondary" onclick="refreshMyReviews()">
+                    <i class="bi bi-arrow-clockwise me-1"></i> Refresh
+                  </button>
+                </div>
+                <div class="card-body">
+                  <div id="myReviewsList">
+                    <div class="text-center py-4">
+                      <div class="spinner-border text-primary-custom" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1061,6 +1131,7 @@ $intakeStatus        = $controller->getIntakeStatus();
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   <script src="../../assets/js/main.js"></script>
   <script src="../../assets/js/patient.js"></script>
+  <script src="../../assets/js/reviews.js"></script>
 </body>
 
 <!--

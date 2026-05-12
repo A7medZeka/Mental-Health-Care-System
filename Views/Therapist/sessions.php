@@ -33,8 +33,8 @@ if (!$therapistObj) {
     exit();
 }
 
-// جلب جدول المواعيد
-$schedule = $therapistRepo->getTherapistSchedule($user_id);
+// جلب جدول المواعيد القادمة
+$schedule = $therapistRepo->getTherapistSchedule($user_id, 'upcoming');
 
 // تحديد الجلسة الحالية
 $currentSessionId = isset($_GET['id']) ? (int)$_GET['id'] : null;
@@ -70,6 +70,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['noteContent']) && $cu
 
     header("Location: sessions.php?id=$currentSessionId&success=1");
     exit();
+}
+
+if (isset($_GET['action']) && $currentSessionId) {
+    if ($_GET['action'] === 'checkin') {
+        $sessionCtrl->transitionState($currentSessionId, 'Live');
+        header("Location: sessions.php?id=$currentSessionId");
+        exit();
+    } elseif ($_GET['action'] === 'end') {
+        $sessionCtrl->endSession($currentSessionId);
+        header("Location: sessions.php?id=$currentSessionId");
+        exit();
+    }
 }
 
 // 4. جلب تاريخ الملحوظات للعرض
@@ -108,6 +120,7 @@ $noteHistory = $currentSessionId ? $noteCtrl->getVersionHistory($currentSessionI
                     <li class="nav-item"><a class="nav-link" href="dashboard.php"><i class="bi bi-house-door me-2"></i> Dashboard</a></li>
                     <li class="nav-item"><a class="nav-link active" href="sessions.php"><i class="bi bi-calendar-event me-2"></i> Manage Sessions</a></li>
                     <li class="nav-item"><a class="nav-link" href="patients.php"><i class="bi bi-people me-2"></i> Manage Patients</a></li>
+                    <li class="nav-item"><a class="nav-link" href="reviews.php"><i class="bi bi-star me-2"></i> Reviews & Ratings</a></li>
                     <li class="nav-item"><a class="nav-link" href="insights.php"><i class="bi bi-graph-up me-2"></i> Clinical Insights</a></li>
                 </ul>
                 <hr class="mx-3 mt-5">
@@ -130,7 +143,44 @@ $noteHistory = $currentSessionId ? $noteCtrl->getVersionHistory($currentSessionI
 
             <?php if ($currentSession): ?>
                 <div class="row">
-                    <div class="col-lg-8">
+                    <!-- Session List Sidebar -->
+                    <div class="col-lg-3">
+                        <div class="card card-custom shadow-sm mb-4">
+                            <div class="card-header bg-white py-3">
+                                <h6 class="fw-bold mb-0 text-primary-custom">All Sessions</h6>
+                            </div>
+                            <div class="card-body p-0">
+                                <div class="list-group list-group-flush">
+                                    <?php if (!empty($schedule)): ?>
+                                        <?php foreach ($schedule as $session): ?>
+                                            <a href="sessions.php?id=<?php echo $session['session_id']; ?>" 
+                                               class="list-group-item list-group-item-action <?php echo ($session['session_id'] == $currentSessionId) ? 'active' : ''; ?>">
+                                                <div class="d-flex justify-content-between align-items-start">
+                                                    <div>
+                                                        <h6 class="mb-1 fw-semibold">
+                                                            <?php echo htmlspecialchars($session['first_name'] . ' ' . $session['last_name']); ?>
+                                                        </h6>
+                                                        <small class="text-muted">
+                                                            <?php echo date('M d, h:i A', strtotime($session['appointment_date'])); ?>
+                                                        </small>
+                                                    </div>
+                                                    <span class="badge <?php echo $session['session_state'] === 'Scheduled' ? 'bg-secondary' : ($session['session_state'] === 'Live' ? 'bg-danger' : 'bg-success'); ?>">
+                                                        <?php echo $session['session_state']; ?>
+                                                    </span>
+                                                </div>
+                                            </a>
+                                        <?php endforeach; ?>
+                                    <?php else: ?>
+                                        <div class="list-group-item text-center text-muted py-4">
+                                            No upcoming sessions
+                                        </div>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-lg-9">
                         <div class="card card-custom mb-4 border-start border-4 border-info">
                             <div class="card-body d-flex align-items-center justify-content-between">
                                 <div>
@@ -169,7 +219,7 @@ $noteHistory = $currentSessionId ? $noteCtrl->getVersionHistory($currentSessionI
                         </form>
                     </div>
 
-                    <div class="col-lg-4">
+                    <div class="col-lg-3">
                         <div class="card card-custom shadow-sm h-100">
                             <div class="card-header bg-white py-3">
                                 <h6 class="fw-bold mb-0 text-primary-custom">Note Version History</h6>
@@ -180,11 +230,11 @@ $noteHistory = $currentSessionId ? $noteCtrl->getVersionHistory($currentSessionI
                                         <?php foreach ($noteHistory as $note): ?>
                                             <div class="history-item ps-3 mb-4">
                                                 <div class="d-flex justify-content-between align-items-center mb-1">
-                                                    <span class="fw-bold text-primary">v<?php echo $note['version_no']; ?>.0</span>
-                                                    <span class="small text-muted font-monospace"><?php echo date('M d, h:i A', strtotime($note['created_at'])); ?></span>
+                                                    <span class="fw-bold text-primary">v<?php echo $note->getVersionNo(); ?>.0</span>
+                                                    <span class="small text-muted font-monospace"><?php echo date('M d, h:i A', strtotime($note->getCreatedAt())); ?></span>
                                                 </div>
                                                 <p class="mb-2 text-dark small bg-light p-2 rounded border">
-                                                    <?php echo htmlspecialchars($noteCtrl->decryptNote($note['encrypted_content'])); ?>
+                                                    <?php echo htmlspecialchars($noteCtrl->decryptNote($note->getEncryptedContent())); ?>
                                                 </p>
                                             </div>
                                         <?php endforeach; ?>
@@ -211,5 +261,17 @@ $noteHistory = $currentSessionId ? $noteCtrl->getVersionHistory($currentSessionI
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script src="../../assets/js/main.js"></script>
 <script src="../../assets/js/therapist.js"></script>
+<script>
+    const Session = {
+        checkIn: function(sessionId) {
+            window.location.href = `sessions.php?id=${sessionId}&action=checkin`;
+        },
+        end: function(sessionId) {
+            if(confirm('Are you sure you want to end this session?')) {
+                window.location.href = `sessions.php?id=${sessionId}&action=end`;
+            }
+        }
+    };
+</script>
 </body>
 </html>

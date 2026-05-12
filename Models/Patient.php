@@ -689,6 +689,81 @@ class PatientResourceManager extends Patient implements PatientResourceInterface
     }
 }
 
+class PatientReviewManager extends Patient
+{
+    private TherapistReview $reviewModel;
+
+    public function __construct()
+    {
+        parent::__construct();
+        require_once __DIR__ . '/TherapistReview.php';
+        $this->reviewModel = new TherapistReview();
+    }
+
+    public function submitTherapistReview(array $reviewData): array
+    {
+        $reviewData['patient_id'] = $reviewData['patient_id'] ?? $_SESSION['user_id'] ?? null;
+        
+        if (!$reviewData['patient_id']) {
+            return ['success' => false, 'message' => 'Patient ID required'];
+        }
+
+        // Validate required fields
+        $required = ['therapist_id', 'rating'];
+        foreach ($required as $field) {
+            if (empty($reviewData[$field])) {
+                return ['success' => false, "message" => "Missing required field: $field"];
+            }
+        }
+
+        // Check if patient can review this therapist
+        if (!$this->reviewModel->canPatientReviewTherapist($reviewData['patient_id'], $reviewData['therapist_id'])) {
+            return ['success' => false, 'message' => 'You cannot review this therapist. You must have a completed appointment and have not reviewed before.'];
+        }
+
+        return $this->reviewModel->createReview($reviewData);
+    }
+
+    public function getMyReviews(int $patientId): array
+    {
+        $stmt = $this->conn->prepare(
+            "SELECT tr.*, u.first_name as therapist_first, u.last_name as therapist_last,
+                    DATE_FORMAT(tr.created_at, '%M %d, %Y') as formatted_date
+             FROM therapist_reviews tr
+             JOIN users u ON u.user_id = tr.therapist_id
+             WHERE tr.patient_id = ?
+             ORDER BY tr.created_at DESC"
+        );
+        $stmt->execute([$patientId]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    }
+
+    public function getTherapistReviewsForPatient(int $therapistId, int $limit = 10): array
+    {
+        return $this->reviewModel->getTherapistReviews($therapistId, $limit);
+    }
+
+    public function getTherapistRatingStats(int $therapistId): array
+    {
+        return $this->reviewModel->getTherapistRatingStats($therapistId);
+    }
+
+    public function canReviewTherapist(int $patientId, int $therapistId): bool
+    {
+        return $this->reviewModel->canPatientReviewTherapist($patientId, $therapistId);
+    }
+
+    public function getMyReviewForTherapist(int $patientId, int $therapistId): ?array
+    {
+        return $this->reviewModel->getPatientReviewForTherapist($patientId, $therapistId);
+    }
+
+    public function markReviewHelpful(int $reviewId): bool
+    {
+        return $this->reviewModel->markReviewHelpful($reviewId);
+    }
+}
+
 class PatientNotificationManager extends Patient
 {
     public function getNotifications(int $patientId, int $limit = 20): array

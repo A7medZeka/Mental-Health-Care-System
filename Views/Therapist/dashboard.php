@@ -28,7 +28,7 @@ $role       = $therapistObj->getRole();
 $email      = $therapistObj->getEmail();
 
 // 3. جلب الإحصائيات (بعد ما صلحنا الـ JOIN والـ session_state)
-// --- بداية حل مشكلة العمر (Age) والنوع (Gender) ---
+// --- حل مشكلة العمر (Age) والنوع (Gender) ---
 $db = SingletonDatabase::getInstance()->getConnection();
 $stmt = $db->prepare("SELECT date_of_birth, gender FROM users WHERE user_id = ?");
 $stmt->execute([$user_id]);
@@ -47,22 +47,13 @@ if ($userData) {
     }
 }
 // --- نهاية حل مشكلة العمر والنوع ---
-// --- بداية حل مشكلة العمر (Age) المحدث ---
-$db = SingletonDatabase::getInstance()->getConnection();
-$stmt = $db->prepare("SELECT date_of_birth FROM users WHERE user_id = ?");
-$stmt->execute([$user_id]);
-$userData = $stmt->fetch();
 
-$age = 'N/A';
-if ($userData && !empty($userData['date_of_birth'])) {
-    $dob = new DateTime($userData['date_of_birth']);
-    $now = new DateTime();
-    $age = $now->diff($dob)->y; // حساب السن بناءً على تاريخ الميلاد والوقت الحالي
-}
-// --- نهاية حل مشكلة العمر ---
+// 4. جلب إحصائيات الثيرابيست
+$stats = $therapistRepo->getTherapistStats($user_id);
 
-// 4. UC-14: جلب جدول المواعيد الحقيقي
-$todaySchedule = $therapistRepo->getTherapistSchedule($user_id);
+// 5. UC-14: جلب جدول المواعيد القادمة (ليس فقط اليوم)
+$todaySchedule = $therapistRepo->getTherapistSchedule($user_id, 'today');
+$upcomingSchedule = $therapistRepo->getTherapistSchedule($user_id, 'upcoming');
 
 // 5. UC-17: معالجة بلاغات الحالات الحرجة
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['welfareActionType'])) {
@@ -112,6 +103,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['welfareActionType']))
                         <li class="nav-item">
                             <a class="nav-link" href="patients.php">
                                 <i class="bi bi-people me-2"></i> Manage Patients
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="reviews.php">
+                                <i class="bi bi-star me-2"></i> Reviews & Ratings
                             </a>
                         </li>
                         <li class="nav-item">
@@ -193,84 +189,62 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['welfareActionType']))
                         </div>
                     </div>
                 <?php endif; ?>
-                <!-- Action Required: High-Risk No-Show (UC-17) -->
-                <?php
-                $hasNoShowIncident = $therapistRepo->checkNoShow($user_id);
-                if ($hasNoShowIncident):
-                    ?>
-                    <div class="row mb-4" id="incidentDashboardUI">
-                        <div class="col-12">
-                            <form method="POST" action="dashboard.php" class="alert alert-danger d-flex align-items-start border-0 shadow-sm p-4" role="alert">
-                                <i class="bi bi-exclamation-triangle-fill fs-1 me-4"></i>
-                                <div class="w-100">
-                                    <h4 class="alert-heading fw-bold mb-2">URGENT: Patient No-Show Detected</h4>
-                                    <p class="mb-3 text-dark">Patient <strong>PT-1055 (High Risk)</strong> has not checked in for their scheduled session after the grace period. Please select a welfare action immediately.</p>
 
-                                    <div class="bg-white p-3 rounded shadow-sm">
-                                        <h6 class="fw-bold text-danger mb-3">Welfare Options (Incident #1055-A)</h6>
-
-                                        <div class="mb-3">
-                                            <label class="form-label fw-semibold">Select Action to Log:</label>
-                                            <select class="form-select" id="welfareActionType" name="welfareActionType">
-                                                <option value="call_patient">Called Patient Directly</option>
-                                                <option value="call_emergency_contact">Contacted Emergency Contact</option>
-                                                <option value="escalate_authorities">Escalated to Local Authorities</option>
-                                            </select>
-                                        </div>
-                                        <div class="mb-3">
-                                            <label class="form-label fw-semibold">Action Notes:</label>
-                                            <textarea class="form-control" id="welfareNotes" rows="2" placeholder="Detail the outcome of the action..." name="welfareNotes"></textarea>
-                                        </div>
-
-                                        <div class="d-flex gap-2 flex-wrap mt-3 pt-3 border-top">
-                                            <button type="submit" class="btn btn-danger px-4" id="btnLogAction">Submit Action & Save Log</button>
-
-                                            <div class="ms-auto d-flex gap-2">
-                                                <button type="button" class="btn btn-outline-warning text-dark" id="btnPatientLate">Patient Joined Late (Override)</button>
-                                                <button type="button" class="btn btn-outline-secondary" id="btnFalseAlarm">Mark as False Alarm</button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-                <?php endif; ?>
 
                 <!-- Today's Schedule Overview -->
                 <div class="row">
                     <div class="col-12">
                         <div class="card card-custom h-100">
                             <div class="card-header bg-white border-0 pt-4 pb-0 d-flex justify-content-between align-items-center">
-                                <h5 class="fw-bold text-primary-custom"><i class="bi bi-calendar3 me-2"></i>Today's Schedule</h5>
-                                <a href="sessions.php" class="btn btn-primary-custom rounded-pill">Go to Sessions Interface</a>
+                                <h5 class="fw-bold text-primary-custom"><i class="bi bi-calendar3 me-2"></i>Upcoming Appointments</h5>
+                                <div class="btn-group" role="group">
+                                    <button type="button" class="btn btn-outline-primary btn-sm" onclick="showSchedule('today')">Today</button>
+                                    <button type="button" class="btn btn-primary btn-sm" onclick="showSchedule('upcoming')">All Upcoming</button>
+                                </div>
                             </div>
                             <div class="card-body p-0 mt-3">
                                 <div class="table-responsive">
                                     <table class="table table-hover table-custom mb-0">
                                         <thead>
                                             <tr>
-                                                <th class="px-4 py-3">Time</th>
+                                                <th class="px-4 py-3">Date & Time</th>
                                                 <th class="px-4 py-3">Patient</th>
                                                 <th class="px-4 py-3">Status</th>
+                                                <th class="px-4 py-3">Action</th>
                                             </tr>
                                         </thead>
                                         <tbody id="dashboardScheduleBody">
-                                        <?php if (!empty($todaySchedule)): ?>
-                                            <?php foreach ($todaySchedule as $row): ?>
+                                        <?php if (!empty($upcomingSchedule)): ?>
+                                            <?php foreach ($upcomingSchedule as $row): ?>
                                                 <tr>
-                                                    <td class="px-4 py-3 fw-semibold"><?php echo date('h:i A', strtotime($row['appointment_date'])); ?></td>
+                                                    <td class="px-4 py-3 fw-semibold">
+                                                        <?php echo date('M d, h:i A', strtotime($row['appointment_date'])); ?>
+                                                        <?php 
+                                                        $appointmentDate = new DateTime($row['appointment_date']);
+                                                        $today = new DateTime();
+                                                        $today->setTime(0, 0, 0);
+                                                        $appointmentDate->setTime(0, 0, 0);
+                                                        if ($appointmentDate == $today) {
+                                                            echo '<span class="badge bg-info ms-2">Today</span>';
+                                                        }
+                                                        ?>
+                                                    </td>
                                                     <td class="px-4 py-3"><?php echo htmlspecialchars($row['first_name'] . ' ' . $row['last_name']); ?></td>
                                                     <td class="px-4 py-3">
-                <span class="badge <?php echo $row['session_state'] === 'Scheduled' ? 'bg-secondary' : 'bg-success'; ?>">
-                    <?php echo $row['session_state']; ?>
-                </span>
+                                                        <span class="badge <?php echo $row['session_state'] === 'Scheduled' ? 'bg-secondary' : ($row['session_state'] === 'Live' ? 'bg-danger' : 'bg-success'); ?>">
+                                                            <?php echo $row['session_state']; ?>
+                                                        </span>
+                                                    </td>
+                                                    <td class="px-4 py-3">
+                                                        <a href="sessions.php?id=<?php echo $row['session_id']; ?>" class="btn btn-sm btn-primary">
+                                                            <i class="bi bi-box-arrow-up-right me-1"></i> Manage Session
+                                                        </a>
                                                     </td>
                                                 </tr>
                                             <?php endforeach; ?>
                                         <?php else: ?>
                                             <tr>
-                                                <td colspan="3" class="text-center py-4 text-muted">No appointments scheduled for today.</td>
+                                                <td colspan="4" class="text-center py-4 text-muted">No upcoming appointments scheduled.</td>
                                             </tr>
                                         <?php endif; ?>
                                         </tbody>
@@ -295,6 +269,67 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['welfareActionType']))
     <!-- Custom JS -->
     <script src="../../assets/js/main.js"></script>
     <script src="../../assets/js/therapist.js"></script>
+    
+    <script>
+        // Store schedule data for filtering
+        const todaySchedule = <?php echo json_encode($todaySchedule); ?>;
+        const upcomingSchedule = <?php echo json_encode($upcomingSchedule); ?>;
+        
+        function showSchedule(filter) {
+            const tbody = document.getElementById('dashboardScheduleBody');
+            const data = filter === 'today' ? todaySchedule : upcomingSchedule;
+            
+            // Update button states
+            document.querySelectorAll('.btn-group button').forEach(btn => {
+                btn.classList.remove('btn-primary');
+                btn.classList.add('btn-outline-primary');
+            });
+            event.target.classList.remove('btn-outline-primary');
+            event.target.classList.add('btn-primary');
+            
+            // Update table content
+            if (data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4 text-muted">No ' + 
+                    (filter === 'today' ? 'appointments scheduled for today' : 'upcoming appointments') + '.</td></tr>';
+                return;
+            }
+            
+            tbody.innerHTML = data.map(row => {
+                const appointmentDate = new Date(row.appointment_date);
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                appointmentDate.setHours(0, 0, 0, 0);
+                const isToday = appointmentDate.getTime() === today.getTime();
+                
+                const statusClass = row.session_state === 'Scheduled' ? 'bg-secondary' : 
+                                 (row.session_state === 'Live' ? 'bg-danger' : 'bg-success');
+                
+                return `
+                    <tr>
+                        <td class="px-4 py-3 fw-semibold">
+                            ${new Date(row.appointment_date).toLocaleString('en-US', { 
+                                month: 'short', 
+                                day: 'numeric', 
+                                hour: 'numeric', 
+                                minute: '2-digit',
+                                hour12: true 
+                            })}
+                            ${isToday ? '<span class="badge bg-info ms-2">Today</span>' : ''}
+                        </td>
+                        <td class="px-4 py-3">${row.first_name} ${row.last_name}</td>
+                        <td class="px-4 py-3">
+                            <span class="badge ${statusClass}">${row.session_state}</span>
+                        </td>
+                        <td class="px-4 py-3">
+                            <a href="sessions.php?id=${row.session_id}" class="btn btn-sm btn-primary">
+                                <i class="bi bi-box-arrow-up-right me-1"></i> Manage Session
+                            </a>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+    </script>
 </body>
 
 <!--

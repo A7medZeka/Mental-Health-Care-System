@@ -79,9 +79,7 @@ class ClinicalNoteController {
         return $data ? ClinicalNote::fromDatabase($data) : null;
     }
 
-    /**
-     * +getVersionHistory(sessionId) : ClinicalNote[]
-     */
+
     public function getVersionHistory(int $sessionId): array {
         $sql = "SELECT * FROM clinical_notes WHERE session_id = ? ORDER BY version_no DESC";
         $stmt = $this->db->execute($sql, [$sessionId]);

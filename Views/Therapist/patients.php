@@ -92,6 +92,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['patient_id'])) {
                         </a>
                     </li>
                     <li class="nav-item">
+                        <a class="nav-link" href="reviews.php">
+                            <i class="bi bi-star me-2"></i> Reviews & Ratings
+                        </a>
+                    </li>
+                    <li class="nav-item">
                         <a class="nav-link" href="insights.php">
                             <i class="bi bi-graph-up me-2"></i> Clinical Insights
                         </a>

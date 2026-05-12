@@ -49,6 +49,11 @@ class AppointmentRepository {
                  VALUES (?, ?, ?, ?, 'Scheduled')"
             );
             $ok = $stmt->execute([$patientId, $therapistId, $date, $type]);
+            if ($ok) {
+                $appointmentId = $this->db->lastInsertId();
+                $stmt2 = $this->db->prepare("INSERT INTO sessions (appointment_id, session_state) VALUES (?, 'Scheduled')");
+                $stmt2->execute([$appointmentId]);
+            }
             return ['success' => $ok, 'message' => $ok ? 'Appointment booked.' : 'Booking failed.'];
         } catch (\Exception $e) {
             return ['success' => false, 'message' => $e->getMessage()];

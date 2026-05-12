@@ -7,16 +7,18 @@ class AccessRulesRepository {
         $this->db = SingletonDatabase::getInstance()->getConnection();
     }
     public function getPatientRules(int $patientId): array {
-        $stmt = $this->db->prepare("SELECT resource_id, has_access FROM patient_resources WHERE patient_id = ?");
+        $stmt = $this->db->prepare("SELECT resource_id, is_allowed FROM resource_access_control WHERE patient_id = ?");
         $stmt->execute([$patientId]);
         return $stmt->fetchAll(PDO::FETCH_KEY_PAIR) ?: [];
     }
     public function updatePatientResourceAccess(int $patientId, int $resourceId, int $status): bool {
         $stmt = $this->db->prepare("
-            INSERT INTO patient_resources (patient_id, resource_id, has_access) 
-            VALUES (?, ?, ?) 
-            ON DUPLICATE KEY UPDATE has_access = ?
+            INSERT INTO resource_access_control (patient_id, resource_id, is_allowed, granted_by) 
+            VALUES (?, ?, ?, ?) 
+            ON DUPLICATE KEY UPDATE is_allowed = ?
         ");
-        return $stmt->execute([$patientId, $resourceId, $status, $status]);
+        // Get therapist ID from session or pass it as parameter
+        $therapistId = $_SESSION['user_id'] ?? 1;
+        return $stmt->execute([$patientId, $resourceId, $status, $therapistId, $status]);
     }
 }

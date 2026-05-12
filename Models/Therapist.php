@@ -60,4 +60,63 @@ class Therapist extends User {
     public function getModerationLogs(): array { return $this->moderation_logs; }
     public function addTherapistMatch(TherapistMatch $match): void { $this->therapist_matches[] = $match; }
     public function getTherapistMatches(): array { return $this->therapist_matches; }
+
+    public function getReviews(int $limit = 10, int $offset = 0): array
+    {
+        require_once __DIR__ . '/TherapistReview.php';
+        $reviewModel = new TherapistReview();
+        return $reviewModel->getTherapistReviews($this->therapist_id, $limit, $offset);
+    }
+
+    public function getRatingStats(): array
+    {
+        require_once __DIR__ . '/TherapistReview.php';
+        $reviewModel = new TherapistReview();
+        return $reviewModel->getTherapistRatingStats($this->therapist_id);
+    }
+
+    public function getAverageRating(): float
+    {
+        return $this->rating;
+    }
+
+    public function updateRating(): void
+    {
+        require_once __DIR__ . '/TherapistReview.php';
+        $reviewModel = new TherapistReview();
+        $stats = $reviewModel->getTherapistRatingStats($this->therapist_id);
+        $this->rating = $stats['average_rating'];
+    }
+
+    public function loadTherapistData(int $therapistId): bool
+    {
+        $stmt = $this->conn->prepare(
+            "SELECT t.*, u.first_name, u.last_name, u.email, u.date_of_birth, u.gender
+             FROM therapists t
+             JOIN users u ON u.user_id = t.therapist_id
+             WHERE t.therapist_id = ?"
+        );
+        $stmt->execute([$therapistId]);
+        $data = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($data) {
+            $this->therapist_id = (int) $data['therapist_id'];
+            $this->specialization = $data['specialization'] ?? '';
+            $this->languages = $data['languages'] ?? '';
+            $this->license_status = $data['license_status'] ?? '';
+            $this->license_expiry_date = $data['license_expiry_date'] ?? null;
+            $this->experience_years = (int) ($data['experience_years'] ?? 0);
+            $this->rating = (float) ($data['rating'] ?? 0.0);
+            $this->hourly_rate = (float) ($data['hourly_rate'] ?? 0.0);
+            $this->availability_schedule = $data['availability_schedule'] ?? '';
+            $this->is_verified = (bool) ($data['is_verified'] ?? false);
+            $this->cultural = $data['cultural'] ?? '';
+            $this->gender = $data['gender'] ?? '';
+            $this->first_name = $data['first_name'] ?? '';
+            $this->last_name = $data['last_name'] ?? '';
+            $this->email = $data['email'] ?? '';
+            return true;
+        }
+        return false;
+    }
 }

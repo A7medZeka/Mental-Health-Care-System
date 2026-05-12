@@ -61,9 +61,10 @@ if ($selectedInsightId) {
                 </div>
                 <ul class="nav flex-column mb-auto">
                     <li class="nav-item"><a class="nav-link" href="dashboard.php"><i class="bi bi-house-door me-2"></i> Dashboard</a></li>
-                    <li class="nav-item"><a class="nav-link" href="sessions.php"><i class="bi bi-calendar-event me-2"></i> Sessions</a></li>
-                    <li class="nav-item"><a class="nav-link" href="patients.php"><i class="bi bi-people me-2"></i> Patients</a></li>
-                    <li class="nav-item"><a class="nav-link active" href="insights.php"><i class="bi bi-graph-up me-2"></i> Insights</a></li>
+                    <li class="nav-item"><a class="nav-link" href="sessions.php"><i class="bi bi-calendar-event me-2"></i> Manage Sessions</a></li>
+                    <li class="nav-item"><a class="nav-link" href="patients.php"><i class="bi bi-people me-2"></i> Manage Patients</a></li>
+                    <li class="nav-item"><a class="nav-link" href="reviews.php"><i class="bi bi-star me-2"></i> Reviews & Ratings</a></li>
+                    <li class="nav-item"><a class="nav-link active" href="insights.php"><i class="bi bi-graph-up me-2"></i> Clinical Insights</a></li>
                 </ul>
                 <hr class="mx-3 mt-5">
                 <div class="px-3">
